@@ -21,14 +21,13 @@ Quadtree* Quadtree_create(CollisionWorld* world,
   q->depth  = parent ? parent->depth + 1 : 0;
 
   // Location
-  q->world    = world;
   q->topLeft  = topLeft;
   q->botRight = botRight;
 
   // Create array of lines
-  q->lines    = malloc(sizeof(Line*) * MAX_LINES_PER_QUAD);
+  q->lines      = malloc(sizeof(Line*) * MAX_LINES_PER_QUAD);
   q->numOfLines = 0;
-  q->isLeaf   = !Quadtree_isDivisible(q);
+  q->isLeaf     = !Quadtree_isDivisible(q);
 
   // Check if quadtree is a leaf
   if (q->isLeaf) {
@@ -94,26 +93,44 @@ bool Quadtree_isDivisible(Quadtree* q) {
 }
 
 bool Quadtree_containsLine(Quadtree* q, Line* l) {
-  // Compute bounding box
+  // Compute quadrant box
   Vec b1 = q->topLeft;
   Vec b4 = q->botRight;
-  Vec b2 = Vec_make(b1.x, b4.y);
-  Vec b3 = Vec_make(b4.x, b1.y);
-  
+  Vec b2 = Vec_make(b4.x, b1.y);
+  Vec b3 = Vec_make(b1.x, b4.y);
+
   // Compute parallelogram
   Vec l1 = l->p1;
   Vec l2 = l->p2;
   Vec l3 = Vec_add(l1, Vec_multiply(l->velocity, q->world->timeStep));
   Vec l4 = Vec_add(l2, Vec_multiply(l->velocity, q->world->timeStep));
-  
-  return pointInParallelogram(l1, b1, b2, b3, b4) ||
-         pointInParallelogram(l2, b1, b2, b3, b4) ||
-         pointInParallelogram(l3, b1, b2, b3, b4) ||
-         pointInParallelogram(l4, b1, b2, b3, b4) ||
-         pointInParallelogram(b1, l1, l2, l3, l4) ||
-         pointInParallelogram(b2, l1, l2, l3, l4) ||
-         pointInParallelogram(b3, l1, l2, l3, l4) ||
-         pointInParallelogram(b4, l1, l2, l3, l4);
+
+  // Check if parallelogram is completely outside of quadrant
+  if (l1.x < b1.x && l2.x < b1.x && l3.x < b1.x && l4.x < b1.x) {
+    return false;
+  }
+  if (l1.x > b4.x && l2.x > b4.x && l3.x > b4.x && l4.x > b4.x) {
+    return false;
+  }
+  if (l1.y < b1.y && l2.y < b1.y && l3.y < b1.y && l4.x < b1.y) {
+    return false;
+  }
+  if (l1.y > b4.y && l2.y > b4.y && l3.y > b4.y && l4.y > b4.y) {
+    return false;
+  }
+
+  return pointInSquare(l1, b1, b4) ||
+         pointInSquare(l2, b1, b4) ||
+         pointInSquare(l3, b1, b4) ||
+         pointInSquare(l4, b1, b4) ||
+         intersectLines(b1, b2, l1, l2) ||
+         intersectLines(b1, b3, l1, l2) ||
+         intersectLines(b2, b4, l1, l2) ||
+         intersectLines(b3, b4, l1, l2) ||
+         intersectLines(b1, b2, l1, l3) ||
+         intersectLines(b1, b3, l1, l3) ||
+         intersectLines(b2, b4, l1, l3) ||
+         intersectLines(b3, b4, l1, l3);
 }
 
 bool Quadtree_addLine(Quadtree* q, Line* l) {
@@ -182,8 +199,35 @@ unsigned int Quadtree_detectCollisions(Quadtree* q,
         // Check if lines intersect
         IntersectionType type = intersect(l1, l2, q->world->timeStep);
         if (type != NO_INTERSECTION) {
-          IntersectionEventList_appendNode(iel, l1, l2, type);
-          n++;
+          // Check for duplicate collision
+          IntersectionEventNode* temp = malloc(sizeof(IntersectionEventNode));
+          if (temp == NULL) {
+            return 0;
+          }
+          temp->l1 = l1;
+          temp->l2 = l2;
+          
+          bool dupe = false;
+          IntersectionEventNode* curr = iel->head;
+          IntersectionEventNode* next = NULL;
+          
+          // TODO: THIS IS VERY INEFFICIENT
+          // Loop through all events, checking for duplicate
+          while (curr != NULL) {
+            next = curr->next;
+            if (IntersectionEventNode_compareData(curr, temp) == 0){
+              dupe = true;
+              break;
+            }
+            curr = next;
+          }
+          
+          free(temp);
+          
+          if (!dupe){
+            IntersectionEventList_appendNode(iel, l1, l2, type);
+            n++;
+          }
         }
       }
     }

@@ -37,6 +37,9 @@ typedef enum {
 // Precondition: compareLines(l1, l2) < 0 must be true.
 IntersectionType intersect(Line *l1, Line *l2, double time);
 
+// Check if a point is in the square.
+bool pointInSquare(Vec point, Vec p1, Vec p4);
+
 // Check if a point is in the parallelogram.
 bool pointInParallelogram(Vec point, Vec p1, Vec p2, Vec p3, Vec p4);
 

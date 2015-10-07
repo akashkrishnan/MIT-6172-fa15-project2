@@ -2,7 +2,6 @@
 Write-up 1
 ================================================================================
 
-$ ./Screensaver 4000
 Number of frames = 4000
 ---- RESULTS ----
 Elapsed execution time: 113.983129s
@@ -25,7 +24,12 @@ quadtrees should still provide an effective speedup for collision detection.
 Write-up 3
 ================================================================================
 
-...
+Number of frames = 4000
+---- RESULTS ----
+Elapsed execution time: 10.884734s
+1262 Line-Wall Collisions
+19806 Line-Line Collisions
+---- END RESULTS ----
 
 
 ================================================================================

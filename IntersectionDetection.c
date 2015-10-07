@@ -97,6 +97,12 @@ IntersectionType intersect(Line *l1, Line *l2, double time) {
   return L1_WITH_L2;
 }
 
+// Check if a point is in the square.
+bool pointInSquare(Vec p, Vec p1, Vec p4) {
+  return p1.x <= p.x && p.x <= p4.x &&
+         p1.y <= p.y && p.y <= p4.y;
+}
+
 // Check if a point is in the parallelogram.
 bool pointInParallelogram(Vec point, Vec p1, Vec p2, Vec p3, Vec p4) {
   double d1 = direction(p1, p2, point);
