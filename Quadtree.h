@@ -1,39 +1,63 @@
-#ifndef _QUADTREE_H
-#define _QUADTREE_H
+#ifndef QUADTREE_H_
+#define QUADTREE_H_
 
 #include <stdlib.h>
-#include "./Line.h"
+
+#include "./CollisionWorld.h"
 #include "./Vec.h"
-#include "./IntersectionDetection.h"
+#include "./Line.h"
+#include "./IntersectionEventList.h"
 
-#define N (5)
+#define MAX_POINTS_PER_QUAD 3
+#define MAX_LINES_PER_QUAD 100
 
-typedef struct Parallelogram {
-  Vec points[4];
-} Parallelogram;
+typedef struct Quadtree Quadtree;
 
-typedef struct Quadtree {
-  int level;
-  int num_objects;
-  window_dimension x;
-  window_dimension y;
-  struct Parallelogram* objects;
-  struct Quadtree* nodes;
-} Quadtree;
+struct Quadtree {
 
-void Quadtree_init(Quadtree* q, int level, window_dimension x, window_dimension y);
+  // Useful pointers
+  CollisionWorld* world;
+  Quadtree* parent;
+  unsigned int depth;
 
+  // Location of quadrant in window
+  Vec topLeft;
+  Vec botRight;
+
+  // Four quadrants
+  Quadtree** quads;
+
+  // Lines in this quadtree, which includes lines from parent quadtrees
+  Line** lines;
+  unsigned int numOfLines;
+
+  // Set to true if numLines < MAX_LINES_PER_QUAD
+  bool isLeaf;
+
+};
+
+Quadtree* Quadtree_create(CollisionWorld* world,
+                          Quadtree* parent,
+                          Vec topLeft,
+                          Vec botRight);
 
 void Quadtree_delete(Quadtree* q);
 
-void Quadtree_partition(Quadtree* q);
+void Quadtree_update(Quadtree* q);
 
-bool parallelogramInBox(Parallelogram* p, int x, int y, int width, int height);
+void Quadtree_updateLines(Quadtree* q);
 
-int Quadtree_getIndex(Quadtree* q, Parallelogram* p);
+bool Quadtree_isDivisible(Quadtree* q);
 
-void Quadtree_insert(Quadtree* q, Parallelogram* p);
+bool Quadtree_containsLine(Quadtree* q, Line* l);
 
-bool Quadtree_potentialCollide(Line* l1, Line* l2);
+//void Quadtree_compileLines(Quadtree* q);
 
-#endif // _QUADTREE_H
+bool Quadtree_addLine(Quadtree* q, Line* l);
+
+void Quadtree_divide(Quadtree* q);
+
+unsigned int Quadtree_detectCollisions(Quadtree* q, IntersectionEventList* iel);
+
+#endif // QUADTREE_H_
+

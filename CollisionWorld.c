@@ -31,6 +31,7 @@
 #include "./IntersectionDetection.h"
 #include "./IntersectionEventList.h"
 #include "./Line.h"
+#include "./Quadtree.h"
 
 CollisionWorld* CollisionWorld_new(const unsigned int capacity) {
   assert(capacity > 0);
@@ -127,31 +128,16 @@ void CollisionWorld_lineWallCollision(CollisionWorld* collisionWorld) {
 void CollisionWorld_detectIntersection(CollisionWorld* collisionWorld) {
   IntersectionEventList intersectionEventList = IntersectionEventList_make();
 
-  // Test all line-line pairs to see if they will intersect before the
-  // next time step.
-  for (int i = 0; i < collisionWorld->numOfLines; i++) {
-    Line *l1 = collisionWorld->lines[i];
-
-    for (int j = i + 1; j < collisionWorld->numOfLines; j++) {
-      Line *l2 = collisionWorld->lines[j];
-
-      // intersect expects compareLines(l1, l2) < 0 to be true.
-      // Swap l1 and l2, if necessary.
-      if (compareLines(l1, l2) >= 0) {
-        Line *temp = l1;
-        l1 = l2;
-        l2 = temp;
-      }
-
-      IntersectionType intersectionType =
-          intersect(l1, l2, collisionWorld->timeStep);
-      if (intersectionType != NO_INTERSECTION) {
-        IntersectionEventList_appendNode(&intersectionEventList, l1, l2,
-                                         intersectionType);
-        collisionWorld->numLineLineCollisions++;
-      }
-    }
-  }
+  // Use Quadtree to detect line-line collisions
+  Quadtree* q = Quadtree_create(
+    collisionWorld,
+    NULL,
+    Vec_make(BOX_XMIN, BOX_YMIN),
+    Vec_make(BOX_XMAX, BOX_YMAX)
+  );
+  collisionWorld->numLineLineCollisions +=
+    Quadtree_detectCollisions(q, &intersectionEventList);
+  Quadtree_delete(q);
 
   // Sort the intersection event list.
   IntersectionEventNode* startNode = intersectionEventList.head;

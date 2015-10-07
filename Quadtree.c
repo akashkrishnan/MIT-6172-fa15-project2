@@ -1,101 +1,198 @@
 #include "./Quadtree.h"
 
-void Quadtree_init(Quadtree* q, int level, window_dimension x, window_dimension y) {
-  q->level = level;
-  q->x = x;
-  q->y = y;
-  q->nodes = (Quadtree*)malloc(5*sizeof(Quadtree));
+#include "./CollisionWorld.h"
+#include "./Vec.h"
+#include "./Line.h"
+#include "./IntersectionEventList.h"
+#include "./IntersectionDetection.h"
+
+Quadtree* Quadtree_create(CollisionWorld* world,
+                          Quadtree* parent,
+                          Vec topLeft,
+                          Vec botRight) {
+  Quadtree* q = malloc(sizeof(Quadtree));
+  if (q == NULL) {
+    return NULL;
+  }
+
+  // Pointers
+  q->world  = world;
+  q->parent = parent;
+  q->depth  = parent ? parent->depth + 1 : 0;
+
+  // Location
+  q->world    = world;
+  q->topLeft  = topLeft;
+  q->botRight = botRight;
+
+  // Create array of lines
+  q->lines    = malloc(sizeof(Line*) * MAX_LINES_PER_QUAD);
+  q->numOfLines = 0;
+  q->isLeaf   = !Quadtree_isDivisible(q);
+
+  // Check if quadtree is a leaf
+  if (q->isLeaf) {
+    // We're a leaf, so we need to compile all the lines
+    //Quadtree_compileLines(q);
+  } else {
+    // We're not a leaf, so we need to make four quadrants
+    q->quads = malloc(sizeof(Quadtree*) * 4);
+    Quadtree_divide(q);
+  }
+  
+  return q;
 }
 
 void Quadtree_delete(Quadtree* q) {
-  for(int i = 0; i < N; i++) {
-    Quadtree_delete((q->nodes)+i);
+  free(q->lines);
+  if (!(q->isLeaf)){
+    for (int i = 0; i < 4; i++) {
+      Quadtree_delete(q->quads[i]);
+    }
+    free(q->quads);
   }
-  if(q->nodes)
-    free(q->nodes);
+  free(q);
 }
 
-void Quadtree_partition(Quadtree* q) {
-  int width = WINDOW_WIDTH / (1 << q->level);
-  int height = WINDOW_HEIGHT / (1 << q->level);
-
-  q->nodes[0] = { .level = q->level + 1,
-                  .num_objects = 0,
-                  .x = q->x,
-                  .y = q->y,
-                  .objects = NULL,
-                  .nodes = NULL};
-
-  q->nodes[1] = { .level = q->level + 1,
-                  .num_objects = 0,
-                  .x = q->x + width / 2,
-                  .y = q->y,
-                  .objects = NULL,
-                  .nodes = NULL};
-
-  q->nodes[2] = { .level = q->level + 1,
-                  .num_objects = 0,
-                  .x = q->x,
-                  .y = q->y + height / 2,
-                  .objects = NULL,
-                  .nodes = NULL};
-
-  q->nodes[1] = { .level = q->level + 1,
-                  .num_objects = 0,
-                  .x = q->x + width / 2,
-                  .y = q->y + height / 2,
-                  .objects = NULL,
-                  .nodes = NULL};
-}
-
-bool paralellogramInBox(Parallelogram* p, int x, int y, int width, int height) {
-  Vec p1 = {.x = x, .y = y};
-  Vec p2 = {.x = x + width, .y = y};
-  Vec p3 = {.x = x, .y = y + height};
-  Vec p4 = {.x = x + width, .y = y + height};
-  for(int i = 0; i < 4; i++) {
-    if(!pointInParallelogram(p->points[i], p1, p2, p3, p4))
-      return false;
-  }
-  return true;
-}
-
-int Quadtree_getIndex(Quadtree* q, Parallelogram* p) {
-  int index = -1;
-  int width = WINDOW_WIDTH / (1 << q->level);
-  int height = WINDOW_HEIGHT / (1 << q->level);
-
-  if(parallelogramInBox(p, q->x, q->y, width/2, height/2))
-    return 0;
-  if(parallelogramInBox(p, q->x + width/2, q->y, width/2, height/2))
-    return 1;
-  if(parallelogramInBox(p, q->x, q->y + width/2, width/2, height/2))
-    return 2;
-  if(parallelogramInBox(p, q->x + width/2, q->y + width/2, width/2, height/2))
-    return 3;
-  return -1;
-}
-
-void Quadtree_insert(Quadtree* q, Parallelogram* p) {
-  int index = Quadtree_getIndex(q, p);
-  if(index != -1) {
-    Quadtree_insert(q->nodes+index, p);
-    return;
-  }
-  q->objects[q->num_objects] = *p;
-  q->num_objects++;
-
-  if(q->num_objects >= N) {
-    Quadtree_partition(q);
-    for(int i = 0; i <= N; i++) {
-      int index = Quadtree_getIndex(q, q->objects+i);
-      if(index != -1) {
-        Quadtree_insert(q->nodes+index, q->objects+i);
-        q->num_objects--;
-      }
+void Quadtree_update(Quadtree* q) {
+  // Updating leaves is the base case
+  if (q->isLeaf){
+    // Base case
+    Quadtree_updateLines(q);
+  } else {
+    // Update four quads
+    for (int i = 0; i < 4; i++) {
+      Quadtree_update(q->quads[i]);
     }
   }
 }
 
-void Quadt
+void Quadtree_updateLines(Quadtree* q) {
+  // Reset numOfLines because we're going to be adding lines again
+  q->numOfLines = 0;
+
+  // Loop through all lines and add lines that are in this quadtree
+  int n =  q->world->numOfLines;
+  for (int i = 0; i < n; i++) {
+    Line* l = q->world->lines[i];
+    if (Quadtree_containsLine(q, l)) {
+      Quadtree_addLine(q, l);
+    }
+  }
+}
+
+bool Quadtree_isDivisible(Quadtree* q) {
+  // Loop through all lines and check to see if a line cannot be added
+  int n = q->world->numOfLines;
+  for (int i = 0; i < n; i++) {
+    Line* l = q->world->lines[i];
+    if (Quadtree_containsLine(q, l) && !Quadtree_addLine(q, l)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool Quadtree_containsLine(Quadtree* q, Line* l) {
+  // Compute bounding box
+  Vec b1 = q->topLeft;
+  Vec b4 = q->botRight;
+  Vec b2 = Vec_make(b1.x, b4.y);
+  Vec b3 = Vec_make(b4.x, b1.y);
+  
+  // Compute parallelogram
+  Vec l1 = l->p1;
+  Vec l2 = l->p2;
+  Vec l3 = Vec_add(l1, Vec_multiply(l->velocity, q->world->timeStep));
+  Vec l4 = Vec_add(l2, Vec_multiply(l->velocity, q->world->timeStep));
+  
+  return pointInParallelogram(l1, b1, b2, b3, b4) ||
+         pointInParallelogram(l2, b1, b2, b3, b4) ||
+         pointInParallelogram(l3, b1, b2, b3, b4) ||
+         pointInParallelogram(l4, b1, b2, b3, b4) ||
+         pointInParallelogram(b1, l1, l2, l3, l4) ||
+         pointInParallelogram(b2, l1, l2, l3, l4) ||
+         pointInParallelogram(b3, l1, l2, l3, l4) ||
+         pointInParallelogram(b4, l1, l2, l3, l4);
+}
+
+bool Quadtree_addLine(Quadtree* q, Line* l) {
+  if (q->numOfLines >= MAX_LINES_PER_QUAD) {
+    return false;
+  }
+  q->lines[q->numOfLines++] = l;
+  return true;
+}
+
+void Quadtree_divide(Quadtree* q) {
+  // Create new quadrants based on computed midpoint
+  Vec mid = Vec_divide(Vec_add(q->topLeft, q->botRight), 2);
+
+  // TOP LEFT
+  q->quads[0] = Quadtree_create(
+    q->world,
+    q,
+    q->topLeft,
+    mid
+  );
+
+  // TOP RIGHT
+  q->quads[1] = Quadtree_create(
+    q->world,
+    q,
+    Vec_make(mid.x, q->topLeft.y),
+    Vec_make(q->botRight.x, mid.y));
+
+  // BOTTOM LEFT
+  q->quads[2] = Quadtree_create(
+    q->world,
+    q,
+    Vec_make(q->topLeft.x, mid.y),
+    Vec_make(mid.x, q->botRight.y)
+  );
+
+  // BOTTOM RIGHT
+  q->quads[3] = Quadtree_create(
+    q->world,
+    q,
+    mid, 
+    q->botRight
+  );
+}
+
+unsigned int Quadtree_detectCollisions(Quadtree* q,
+                                       IntersectionEventList* iel) {
+  unsigned int n = 0, i, j;
+  if (q->isLeaf) {
+    // Loop through lines in this quadrant
+    for (i = 0; i < q->numOfLines; i++) {
+    Line *l1 = q->lines[i];
+
+      // Loop through lines in this quadrant to check for collision
+      for (j = i + 1; j < q->numOfLines; j++) {
+        Line *l2 = q->lines[j];
+
+        // Swap lines if necessary for intersect function
+        if (compareLines(l1, l2) >= 0) {
+          Line *tmp = l1;
+          l1 = l2;
+          l2 = tmp;
+        }
+
+        // Check if lines intersect
+        IntersectionType type = intersect(l1, l2, q->world->timeStep);
+        if (type != NO_INTERSECTION) {
+          IntersectionEventList_appendNode(iel, l1, l2, type);
+          n++;
+        }
+      }
+    }
+  } else {
+    // Recurssively add collisions in 4 quadrants
+    for (int i = 0; i < 4; i++) {
+      n += Quadtree_detectCollisions(q->quads[i], iel);
+    }
+  }
+  return n;
+}
 
