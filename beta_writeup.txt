@@ -55,7 +55,24 @@ Write-up 5
 Write-up 6
 ================================================================================
 
-...
+ N     Execution Time
+----------------------
+ 25    14.743758s
+ 40    10.860574s
+ 50    10.080458s
+ 55    9.950865s
+ 60    9.898966s
+*65    9.848825s
+ 70    10.069617s
+ 75    10.250410s
+ 100   10.884734s
+ 200   15.567572s
+
+It was found that the optimal value of N was 65, which provided a 10% speedup.
+Decreasing N from this optimal point increases the execution time because the
+overhead of creating new Quadtrees outweights the work done by each Quadtree.
+Increasing N from this optimal point increases the execution time because the
+amount of work done by each Quadtree is O(N^2).
 
 
 ================================================================================

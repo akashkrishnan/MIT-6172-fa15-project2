@@ -8,8 +8,7 @@
 #include "./Line.h"
 #include "./IntersectionEventList.h"
 
-#define MAX_POINTS_PER_QUAD 3
-#define MAX_LINES_PER_QUAD 100
+#define MAX_LINES_PER_QUAD 65
 
 typedef struct Quadtree Quadtree;
 
