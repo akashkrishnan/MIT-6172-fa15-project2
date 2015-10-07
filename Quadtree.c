@@ -6,7 +6,7 @@
 #include "./IntersectionEventList.h"
 #include "./IntersectionDetection.h"
 
-Quadtree* Quadtree_create(CollisionWorld* world,
+inline Quadtree* Quadtree_create(CollisionWorld* world,
                           Quadtree* parent,
                           Vec topLeft,
                           Vec botRight) {
@@ -42,7 +42,7 @@ Quadtree* Quadtree_create(CollisionWorld* world,
   return q;
 }
 
-void Quadtree_delete(Quadtree* q) {
+inline void Quadtree_delete(Quadtree* q) {
   free(q->lines);
   if (!(q->isLeaf)){
     for (int i = 0; i < 4; i++) {
@@ -53,7 +53,7 @@ void Quadtree_delete(Quadtree* q) {
   free(q);
 }
 
-void Quadtree_update(Quadtree* q) {
+inline void Quadtree_update(Quadtree* q) {
   // Updating leaves is the base case
   if (q->isLeaf){
     // Base case
@@ -66,7 +66,7 @@ void Quadtree_update(Quadtree* q) {
   }
 }
 
-void Quadtree_updateLines(Quadtree* q) {
+inline void Quadtree_updateLines(Quadtree* q) {
   // Reset numOfLines because we're going to be adding lines again
   q->numOfLines = 0;
 
@@ -80,7 +80,7 @@ void Quadtree_updateLines(Quadtree* q) {
   }
 }
 
-bool Quadtree_isDivisible(Quadtree* q) {
+inline bool Quadtree_isDivisible(Quadtree* q) {
   // Loop through all lines and check to see if a line cannot be added
   int n = q->world->numOfLines;
   for (int i = 0; i < n; i++) {
@@ -92,7 +92,7 @@ bool Quadtree_isDivisible(Quadtree* q) {
   return false;
 }
 
-bool Quadtree_containsLine(Quadtree* q, Line* l) {
+inline bool Quadtree_containsLine(Quadtree* q, Line* l) {
   // Compute quadrant box
   Vec b1 = q->topLeft;
   Vec b4 = q->botRight;
@@ -133,7 +133,7 @@ bool Quadtree_containsLine(Quadtree* q, Line* l) {
          intersectLines(b3, b4, l1, l3);
 }
 
-bool Quadtree_addLine(Quadtree* q, Line* l) {
+inline bool Quadtree_addLine(Quadtree* q, Line* l) {
   if (q->numOfLines >= MAX_LINES_PER_QUAD) {
     return false;
   }
@@ -141,7 +141,7 @@ bool Quadtree_addLine(Quadtree* q, Line* l) {
   return true;
 }
 
-void Quadtree_divide(Quadtree* q) {
+inline void Quadtree_divide(Quadtree* q) {
   // Create new quadrants based on computed midpoint
   Vec mid = Vec_divide(Vec_add(q->topLeft, q->botRight), 2);
 
@@ -177,7 +177,7 @@ void Quadtree_divide(Quadtree* q) {
   );
 }
 
-unsigned int Quadtree_detectCollisions(Quadtree* q,
+inline unsigned int Quadtree_detectCollisions(Quadtree* q,
                                        IntersectionEventList* iel) {
   unsigned int n = 0, i, j;
   if (q->isLeaf) {
