@@ -36,7 +36,12 @@ Elapsed execution time: 10.884734s
 Write-up 4
 ================================================================================
 
-...
+The more efficient collision detection ran in 10.88 seconds while the original
+implementation ran in 114 seconds. This is a 10x speedup. A larger speedup was
+expected, considering the amount of additional time and code, but there are
+definitely a few rough areas that could use major optimization. For example,
+checking for duplicate entries is not ifficiently implemented, and there is a
+reasonable amount of duplicate computation.
 
 
 ================================================================================
