@@ -26,6 +26,7 @@
 
 #include "./Line.h"
 #include "./IntersectionDetection.h"
+#include "./Quadtree.h"
 
 struct CollisionWorld {
   // Time step used for simulation
@@ -34,6 +35,7 @@ struct CollisionWorld {
   // Container that holds all the lines as an array of Line* lines.
   // This CollisionWorld owns the Line* lines.
   Line** lines;
+  LineNode** line_nodes;
   unsigned int numOfLines;
 
   // Record the total number of line-wall collisions.

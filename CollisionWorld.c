@@ -31,6 +31,9 @@
 #include "./IntersectionDetection.h"
 #include "./IntersectionEventList.h"
 #include "./Line.h"
+#include "./Quadtree.h"
+
+#define MAX_INTERSECTS 20
 
 CollisionWorld* CollisionWorld_new(const unsigned int capacity) {
   assert(capacity > 0);
@@ -44,6 +47,7 @@ CollisionWorld* CollisionWorld_new(const unsigned int capacity) {
   collisionWorld->numLineLineCollisions = 0;
   collisionWorld->timeStep = 0.5;
   collisionWorld->lines = malloc(capacity * sizeof(Line*));
+  collisionWorld->line_nodes = malloc(capacity * sizeof(LineNode*));
   collisionWorld->numOfLines = 0;
   return collisionWorld;
 }
@@ -51,8 +55,10 @@ CollisionWorld* CollisionWorld_new(const unsigned int capacity) {
 void CollisionWorld_delete(CollisionWorld* collisionWorld) {
   for (int i = 0; i < collisionWorld->numOfLines; i++) {
     free(collisionWorld->lines[i]);
+    free(collisionWorld->line_nodes[i]);
   }
   free(collisionWorld->lines);
+  free(collisionWorld->line_nodes);
   free(collisionWorld);
 }
 
@@ -62,6 +68,7 @@ unsigned int CollisionWorld_getNumOfLines(CollisionWorld* collisionWorld) {
 
 void CollisionWorld_addLine(CollisionWorld* collisionWorld, Line *line) {
   collisionWorld->lines[collisionWorld->numOfLines] = line;
+  collisionWorld->line_nodes[collisionWorld->numOfLines] = LineNode_make(line);
   collisionWorld->numOfLines++;
 }
 
@@ -81,10 +88,12 @@ void CollisionWorld_updateLines(CollisionWorld* collisionWorld) {
 
 void CollisionWorld_updatePosition(CollisionWorld* collisionWorld) {
   double t = collisionWorld->timeStep;
+  Vec delta;
   for (int i = 0; i < collisionWorld->numOfLines; i++) {
     Line *line = collisionWorld->lines[i];
-    line->p1 = Vec_add(line->p1, Vec_multiply(line->velocity, t));
-    line->p2 = Vec_add(line->p2, Vec_multiply(line->velocity, t));
+    delta = Vec_multiply(line->velocity, t);
+    line->p1 = Vec_add(line->p1, delta);
+    line->p2 = Vec_add(line->p2, delta);
   }
 }
 
@@ -123,6 +132,87 @@ void CollisionWorld_lineWallCollision(CollisionWorld* collisionWorld) {
     }
   }
 }
+
+QuadTree* build_quadtree(CollisionWorld* cw) {
+  double x1 = BOX_XMIN;
+  double x2 = BOX_XMAX;
+  double y1 = BOX_YMIN;
+  double y2 = BOX_YMAX;
+  double timeStep = cw->timeStep;
+
+  QuadTree* q = QuadTree_make(x1, x2, y1, y2);
+
+  int n = cw->numOfLines;
+  if (n <= N) {
+    for (int i = 0; i < n; i++) {
+      LineList_addLineNode(q->lines, cw->line_nodes[i]);
+    }
+    return q;
+  }
+
+  LineList *quad1, *quad2, *quad3, *quad4;
+  quad1 = LineList_make();
+  quad2 = LineList_make();
+  quad3 = LineList_make();
+  quad4 = LineList_make();
+
+  LineNode* curr;
+  int type;
+  for (int i = 0; i < n; i++) {
+    update_box(cw->lines[i], timeStep);
+    curr = cw->line_nodes[i];
+    type = QuadTree_getQuad(q, curr, timeStep);
+    switch (type) {
+      case 1:
+        LineList_addLineNode(quad1, curr);
+        break;
+      case 2:
+        LineList_addLineNode(quad2, curr);
+        break;
+      case 3:
+        LineList_addLineNode(quad3, curr);
+        break;
+      case 4:
+        LineList_addLineNode(quad4, curr);
+        break;
+      case MULTIPLE_QUADS:
+        LineList_addLineNode(q->lines, curr);
+        break;
+      default:
+        return NULL;
+    }
+  }
+
+  // Calculate midpoint
+  double x = (x1 + x2) / 2;
+  double y = (y1 + y2) / 2;
+
+  // TOP LEFT
+  if (quad1->head) {
+    q->quads[0] = QuadTree_make(x1, x, y1, y);
+    QuadTree_addLines(q->quads[0], quad1, timeStep);
+  }
+
+  // TOP RIGHT
+  if (quad2->head) {
+    q->quads[1] = QuadTree_make(x, x2, y1, y);
+    QuadTree_addLines(q->quads[1], quad2, timeStep);
+  }
+
+  // BOTTOM LEFT
+  if (quad3->head) {
+    q->quads[2] = QuadTree_make(x1, x, y, y2);
+    QuadTree_addLines(q->quads[2], quad3, timeStep);
+  }
+
+  // BOTTOM RIGHT
+  if (quad4->head) {
+    q->quads[3] = QuadTree_make(x, x2, y, y2);
+    QuadTree_addLines(q->quads[3], quad4, timeStep);
+  }
+
+  return q;
+ }
 
 void CollisionWorld_detectIntersection(CollisionWorld* collisionWorld) {
   IntersectionEventList intersectionEventList = IntersectionEventList_make();
