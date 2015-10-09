@@ -27,12 +27,12 @@
 #include "./Line.h"
 #include "./Vec.h"
 
-inline bool rectangles_overlap(Line* l1, Line* l2) {
+inline static bool rectangles_overlap(Line* l1, Line* l2) {
   return (l1->l_x <= l2->u_x) && (l1->u_x >= l2->l_x) &&
          (l1->l_y <= l2->u_y) && (l1->u_y >= l2->l_y);
 }
 
-inline bool which_side(Vec E, Vec F, Vec P) {
+inline static bool which_side(Vec E, Vec F, Vec P) {
   return (F.x - E.x) * (P.y - F.y) - (F.y - E.y) * (P.x - F.x) >= 0;
 }
 

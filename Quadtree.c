@@ -60,7 +60,7 @@ inline void LineList_concat(LineList* l, LineList* r) {
 }
 
 
-QuadTree* QuadTree_make(double x1, double x2, double y1, double y2) {
+inline QuadTree* QuadTree_make(double x1, double x2, double y1, double y2) {
   QuadTree* q = malloc(sizeof(QuadTree));
   q->quads = calloc(4, sizeof(QuadTree*));
   q->lines = LineList_make();
@@ -71,7 +71,7 @@ QuadTree* QuadTree_make(double x1, double x2, double y1, double y2) {
   return q;
 }
 
-void QuadTree_delete(QuadTree* q) {
+inline void QuadTree_delete(QuadTree* q) {
   if (q) {
     QuadTree_delete(q->quads[0]);
     QuadTree_delete(q->quads[1]);
@@ -83,7 +83,7 @@ void QuadTree_delete(QuadTree* q) {
   }
 }
 
-int QuadTree_getQuadWithLine(QuadTree* q, Vec p1, Vec p2) {
+inline int QuadTree_getQuadWithLine(QuadTree* q, Vec p1, Vec p2) {
   // Bounding box
   double x1 = q->x1;
   double x2 = q->x2;
@@ -107,9 +107,10 @@ int QuadTree_getQuadWithLine(QuadTree* q, Vec p1, Vec p2) {
   return quad;
 }
 
-int QuadTree_getQuad(QuadTree* q, LineNode* ln, double timeStep) {
+inline int QuadTree_getQuad(QuadTree* q, LineNode* ln, double timeStep) {
   assert(q);
   assert(ln);
+  assert(ln->line);
 
   Vec p1_a = ln->line->p1;
   Vec p2_a = ln->line->p2;
@@ -122,7 +123,7 @@ int QuadTree_getQuad(QuadTree* q, LineNode* ln, double timeStep) {
   return q_a == q_b ? q_a : MULTIPLE_QUADS;
 }
 
-void QuadTree_addLines(QuadTree* q, LineList* ll, double timeStep) {
+inline void QuadTree_addLines(QuadTree* q, LineList* ll, double timeStep) {
   assert(q);
   assert(ll);
 

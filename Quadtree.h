@@ -16,7 +16,7 @@ typedef struct LineNode {
 
 LineNode* LineNode_make(Line* line);
 
-void LineNode_remove(LineNode* ln);
+void LineNode_delete(LineNode* ln);
 
 
 typedef struct LineList {
@@ -27,7 +27,7 @@ typedef struct LineList {
 
 LineList* LineList_make();
 
-void LineList_remove(LineList* ll);
+void LineList_delete(LineList* ll);
 
 void LineList_addLineNode(LineList* ll, LineNode* ln);
 

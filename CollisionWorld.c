@@ -66,10 +66,13 @@ unsigned int CollisionWorld_getNumOfLines(CollisionWorld* collisionWorld) {
   return collisionWorld->numOfLines;
 }
 
-void CollisionWorld_addLine(CollisionWorld* collisionWorld, Line *line) {
-  collisionWorld->lines[collisionWorld->numOfLines] = line;
-  collisionWorld->line_nodes[collisionWorld->numOfLines] = LineNode_make(line);
-  collisionWorld->numOfLines++;
+void CollisionWorld_addLine(CollisionWorld* cw, Line *line) {
+  cw->lines[cw->numOfLines] = line;
+  cw->line_nodes[cw->numOfLines] = LineNode_make(line);
+  assert(line);
+  assert(cw->line_nodes[cw->numOfLines]);
+  assert(cw->line_nodes[cw->numOfLines]->line);
+  cw->numOfLines++;
 }
 
 Line* CollisionWorld_getLine(CollisionWorld* collisionWorld,
@@ -161,6 +164,8 @@ QuadTree* build_quadtree(CollisionWorld* cw) {
   for (int i = 0; i < n; i++) {
     update_box(cw->lines[i], timeStep);
     curr = cw->line_nodes[i];
+    assert(curr);
+    assert(curr->line);
     type = QuadTree_getQuad(q, curr, timeStep);
     switch (type) {
       case 1:
@@ -249,7 +254,7 @@ IntersectionEventList CollisionWorld_getIntersectionEvents(QuadTree* q,
 
   first_node = q->lines->head;
   while (first_node != NULL) {
-    second_node = lines->head;
+    second_node = lines ? lines->head : NULL;
     while (second_node != NULL) {
       Line* l1 = first_node->line;
       Line* l2 = second_node->line;
@@ -275,7 +280,9 @@ IntersectionEventList CollisionWorld_getIntersectionEvents(QuadTree* q,
   IntersectionEventList ielQ3;
   IntersectionEventList ielQ4;
 
-  LineList_concat(q->lines, lines);
+  if (lines) {
+    LineList_concat(q->lines, lines);
+  }
 
   /*if (q->lines->count > MAX_INTERSECTS) {
     ielQ1 = cilk_spawn CollisionWorld_getIntersectionEvents(q->quads[0], timeStep, q->lines);
