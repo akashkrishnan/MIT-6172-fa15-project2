@@ -131,7 +131,6 @@ void CollisionWorld_detectIntersection(CollisionWorld* collisionWorld) {
   // Use Quadtree to detect line-line collisions
   Quadtree* q = Quadtree_create(
     collisionWorld,
-    NULL,
     Vec_make(BOX_XMIN, BOX_YMIN),
     Vec_make(BOX_XMAX, BOX_YMAX)
   );

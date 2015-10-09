@@ -7,7 +7,6 @@
 #include "./IntersectionDetection.h"
 
 inline Quadtree* Quadtree_create(CollisionWorld* world,
-                          Quadtree* parent,
                           Vec topLeft,
                           Vec botRight) {
   Quadtree* q = malloc(sizeof(Quadtree));
@@ -17,8 +16,6 @@ inline Quadtree* Quadtree_create(CollisionWorld* world,
 
   // Pointers
   q->world  = world;
-  q->parent = parent;
-  q->depth  = parent ? parent->depth + 1 : 0;
 
   // Location
   q->topLeft  = topLeft;
@@ -45,9 +42,10 @@ inline Quadtree* Quadtree_create(CollisionWorld* world,
 inline void Quadtree_delete(Quadtree* q) {
   free(q->lines);
   if (!(q->isLeaf)){
-    for (int i = 0; i < 4; i++) {
-      Quadtree_delete(q->quads[i]);
-    }
+    Quadtree_delete(q->quads[0]);
+    Quadtree_delete(q->quads[1]);
+    Quadtree_delete(q->quads[2]);
+    Quadtree_delete(q->quads[3]);
     free(q->quads);
   }
   free(q);
@@ -60,9 +58,10 @@ inline void Quadtree_update(Quadtree* q) {
     Quadtree_updateLines(q);
   } else {
     // Update four quads
-    for (int i = 0; i < 4; i++) {
-      Quadtree_update(q->quads[i]);
-    }
+    Quadtree_update(q->quads[0]);
+    Quadtree_update(q->quads[1]);
+    Quadtree_update(q->quads[2]);
+    Quadtree_update(q->quads[3]);
   }
 }
 
@@ -148,7 +147,6 @@ inline void Quadtree_divide(Quadtree* q) {
   // TOP LEFT
   q->quads[0] = Quadtree_create(
     q->world,
-    q,
     q->topLeft,
     mid
   );
@@ -156,14 +154,12 @@ inline void Quadtree_divide(Quadtree* q) {
   // TOP RIGHT
   q->quads[1] = Quadtree_create(
     q->world,
-    q,
     Vec_make(mid.x, q->topLeft.y),
     Vec_make(q->botRight.x, mid.y));
 
   // BOTTOM LEFT
   q->quads[2] = Quadtree_create(
     q->world,
-    q,
     Vec_make(q->topLeft.x, mid.y),
     Vec_make(mid.x, q->botRight.y)
   );
@@ -171,7 +167,6 @@ inline void Quadtree_divide(Quadtree* q) {
   // BOTTOM RIGHT
   q->quads[3] = Quadtree_create(
     q->world,
-    q,
     mid, 
     q->botRight
   );

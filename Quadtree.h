@@ -16,8 +16,6 @@ struct Quadtree {
 
   // Useful pointers
   CollisionWorld* world;
-  Quadtree* parent;
-  unsigned int depth;
 
   // Location of quadrant in window
   Vec topLeft;
@@ -36,7 +34,6 @@ struct Quadtree {
 };
 
 Quadtree* Quadtree_create(CollisionWorld* world,
-                          Quadtree* parent,
                           Vec topLeft,
                           Vec botRight);
 
@@ -49,8 +46,6 @@ void Quadtree_updateLines(Quadtree* q);
 bool Quadtree_isDivisible(Quadtree* q);
 
 bool Quadtree_containsLine(Quadtree* q, Line* l);
-
-//void Quadtree_compileLines(Quadtree* q);
 
 bool Quadtree_addLine(Quadtree* q, Line* l);
 
