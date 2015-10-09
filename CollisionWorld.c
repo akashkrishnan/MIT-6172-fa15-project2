@@ -212,39 +212,102 @@ QuadTree* build_quadtree(CollisionWorld* cw) {
   }
 
   return q;
- }
+}
 
-void CollisionWorld_detectIntersection(CollisionWorld* collisionWorld) {
-  IntersectionEventList intersectionEventList = IntersectionEventList_make();
+IntersectionEventList CollisionWorld_getIntersectionEvents(QuadTree* q,
+                                                           double timeStep,
+                                                           LineList* lines) {
+  IntersectionEventList iel = IntersectionEventList_make();
+  if (q == NULL) {
+    return iel;
+  }
 
-  // Test all line-line pairs to see if they will intersect before the
-  // next time step.
-  for (int i = 0; i < collisionWorld->numOfLines; i++) {
-    Line *l1 = collisionWorld->lines[i];
+  LineNode* first_node = q->lines->head;
+  LineNode* second_node;
 
-    for (int j = i + 1; j < collisionWorld->numOfLines; j++) {
-      Line *l2 = collisionWorld->lines[j];
+  while (first_node != NULL) {
+    second_node = first_node->next;
+    while (second_node != NULL) {
+      Line* l1 = first_node->line;
+      Line* l2 = second_node->line;
 
-      // intersect expects compareLines(l1, l2) < 0 to be true.
-      // Swap l1 and l2, if necessary.
       if (compareLines(l1, l2) >= 0) {
         Line *temp = l1;
         l1 = l2;
         l2 = temp;
       }
 
-      IntersectionType intersectionType =
-          intersect(l1, l2, collisionWorld->timeStep);
-      if (intersectionType != NO_INTERSECTION) {
-        IntersectionEventList_appendNode(&intersectionEventList, l1, l2,
-                                         intersectionType);
-        collisionWorld->numLineLineCollisions++;
+      IntersectionType type = intersect(l1, l2, timeStep);
+      if (type != NO_INTERSECTION) {
+        IntersectionEventList_appendNode(&iel, l1, l2, type);
       }
+
+      second_node = second_node->next;
     }
+    first_node = first_node->next;
   }
 
+  first_node = q->lines->head;
+  while (first_node != NULL) {
+    second_node = lines->head;
+    while (second_node != NULL) {
+      Line* l1 = first_node->line;
+      Line* l2 = second_node->line;
+
+      if (compareLines(l1, l2) >= 0) {
+        Line *temp = l1;
+        l1 = l2;
+        l2 = temp;
+      }
+
+      IntersectionType type = intersect(l1, l2, timeStep);
+      if (type != NO_INTERSECTION) {
+        IntersectionEventList_appendNode(&iel, l1, l2, type);
+      }
+
+      second_node = second_node->next;
+    }
+    first_node = first_node->next;
+  }
+
+  IntersectionEventList ielQ1;
+  IntersectionEventList ielQ2;
+  IntersectionEventList ielQ3;
+  IntersectionEventList ielQ4;
+
+  LineList_concat(q->lines, lines);
+
+  /*if (q->lines->count > MAX_INTERSECTS) {
+    ielQ1 = cilk_spawn CollisionWorld_getIntersectionEvents(q->quads[0], timeStep, q->lines);
+    ielQ2 = cilk_spawn CollisionWorld_getIntersectionEvents(q->quads[1], timeStep, q->lines);
+    ielQ3 = cilk_spawn CollisionWorld_getIntersectionEvents(q->quads[2], timeStep, q->lines);
+    ielQ4 = CollisionWorld_getIntersectionEvents(q->quads[3], timeStep, q->lines);
+    cilk_sync;
+  } else {*/
+    ielQ1 = CollisionWorld_getIntersectionEvents(q->quads[0], timeStep, q->lines);
+    ielQ2 = CollisionWorld_getIntersectionEvents(q->quads[1], timeStep, q->lines);
+    ielQ3 = CollisionWorld_getIntersectionEvents(q->quads[2], timeStep, q->lines);
+    ielQ4 = CollisionWorld_getIntersectionEvents(q->quads[3], timeStep, q->lines);
+  //}
+
+  IntersectionEventList_concat(&iel, &ielQ1);
+  IntersectionEventList_concat(&iel, &ielQ2);
+  IntersectionEventList_concat(&iel, &ielQ3);
+  IntersectionEventList_concat(&iel, &ielQ4);
+
+  return iel;
+}
+
+void CollisionWorld_detectIntersection(CollisionWorld* cw) {
+  QuadTree* q = build_quadtree(cw);
+  IntersectionEventList iel = CollisionWorld_getIntersectionEvents(q,
+                                                                   cw->timeStep,
+                                                                   NULL);
+  cw->numLineLineCollisions += iel.count;
+  QuadTree_delete(q);
+
   // Sort the intersection event list.
-  IntersectionEventNode* startNode = intersectionEventList.head;
+  IntersectionEventNode* startNode = iel.head;
   while (startNode != NULL) {
     IntersectionEventNode* minNode = startNode;
     IntersectionEventNode* curNode = startNode->next;
@@ -261,15 +324,15 @@ void CollisionWorld_detectIntersection(CollisionWorld* collisionWorld) {
   }
 
   // Call the collision solver for each intersection event.
-  IntersectionEventNode* curNode = intersectionEventList.head;
+  IntersectionEventNode* curNode = iel.head;
 
   while (curNode != NULL) {
-    CollisionWorld_collisionSolver(collisionWorld, curNode->l1, curNode->l2,
+    CollisionWorld_collisionSolver(cw, curNode->l1, curNode->l2,
                                    curNode->intersectionType);
     curNode = curNode->next;
   }
 
-  IntersectionEventList_deleteNodes(&intersectionEventList);
+  IntersectionEventList_deleteNodes(&iel);
 }
 
 unsigned int CollisionWorld_getNumLineWallCollisions(
