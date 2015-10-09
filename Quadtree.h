@@ -39,10 +39,6 @@ Quadtree* Quadtree_create(CollisionWorld* world,
 
 void Quadtree_delete(Quadtree* q);
 
-void Quadtree_update(Quadtree* q);
-
-void Quadtree_updateLines(Quadtree* q);
-
 bool Quadtree_isDivisible(Quadtree* q);
 
 bool Quadtree_containsLine(Quadtree* q, Line* l);

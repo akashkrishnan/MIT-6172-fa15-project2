@@ -28,8 +28,6 @@ inline Quadtree* Quadtree_create(CollisionWorld* world,
 
   // Check if quadtree is a leaf
   if (q->isLeaf) {
-    // We're a leaf, so we need to compile all the lines
-    //Quadtree_compileLines(q);
   } else {
     // We're not a leaf, so we need to make four quadrants
     q->quads = malloc(sizeof(Quadtree*) * 4);
@@ -49,34 +47,6 @@ inline void Quadtree_delete(Quadtree* q) {
     free(q->quads);
   }
   free(q);
-}
-
-inline void Quadtree_update(Quadtree* q) {
-  // Updating leaves is the base case
-  if (q->isLeaf){
-    // Base case
-    Quadtree_updateLines(q);
-  } else {
-    // Update four quads
-    Quadtree_update(q->quads[0]);
-    Quadtree_update(q->quads[1]);
-    Quadtree_update(q->quads[2]);
-    Quadtree_update(q->quads[3]);
-  }
-}
-
-inline void Quadtree_updateLines(Quadtree* q) {
-  // Reset numOfLines because we're going to be adding lines again
-  q->numOfLines = 0;
-
-  // Loop through all lines and add lines that are in this quadtree
-  int n =  q->world->numOfLines;
-  for (int i = 0; i < n; i++) {
-    Line* l = q->world->lines[i];
-    if (Quadtree_containsLine(q, l)) {
-      Quadtree_addLine(q, l);
-    }
-  }
 }
 
 inline bool Quadtree_isDivisible(Quadtree* q) {
