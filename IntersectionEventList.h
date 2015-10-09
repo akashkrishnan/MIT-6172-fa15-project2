@@ -47,6 +47,7 @@ void IntersectionEventNode_swapData(IntersectionEventNode* node1,
                                     IntersectionEventNode* node2);
 
 struct IntersectionEventList {
+  int count;
   IntersectionEventNode* head;
   IntersectionEventNode* tail;
 };
@@ -60,6 +61,9 @@ IntersectionEventList IntersectionEventList_make();
 void IntersectionEventList_appendNode(
     IntersectionEventList* intersectionEventList, Line* l1, Line* l2,
     IntersectionType intersectionType);
+
+void IntersectionEventList_concat(IntersectionEventList* list1,
+                                  IntersectionEventList* list2);
 
 // Deletes all the nodes in the list.
 void IntersectionEventList_deleteNodes(

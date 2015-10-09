@@ -27,9 +27,22 @@
 #include "./Line.h"
 #include "./Vec.h"
 
+inline bool rectangles_overlap(Line* l1, Line* l2) {
+  return (l1->l_x <= l2->u_x) && (l1->u_x >= l2->l_x) &&
+         (l1->l_y <= l2->u_y) && (l1->u_y >= l2->l_y);
+}
+
+inline bool which_side(Vec E, Vec F, Vec P) {
+  return (F.x - E.x) * (P.y - F.y) - (F.y - E.y) * (P.x - F.x) >= 0;
+}
+
 // Detect if lines l1 and l2 will intersect between now and the next time step.
 IntersectionType intersect(Line *l1, Line *l2, double time) {
   assert(compareLines(l1, l2) < 0);
+
+  if (!rectangles_overlap(l1, l2)) {
+    return NO_INTERSECTION;
+  }
 
   Vec velocity;
   Vec p1;
@@ -41,8 +54,9 @@ IntersectionType intersect(Line *l1, Line *l2, double time) {
   velocity = Vec_subtract(l2->velocity, l1->velocity);
 
   // Get the parallelogram.
-  p1 = Vec_add(l2->p1, Vec_multiply(velocity, time));
-  p2 = Vec_add(l2->p2, Vec_multiply(velocity, time));
+  Vec delta = Vec_multiply(velocity, time);
+  p1 = Vec_add(l2->p1, delta);
+  p2 = Vec_add(l2->p2, delta);
 
   int num_line_intersections = 0;
   bool top_intersected = false;
@@ -113,31 +127,8 @@ bool pointInParallelogram(Vec point, Vec p1, Vec p2, Vec p3, Vec p4) {
 
 // Check if two lines intersect.
 bool intersectLines(Vec p1, Vec p2, Vec p3, Vec p4) {
-  // Relative orientation
-  double d1 = direction(p3, p4, p1);
-  double d2 = direction(p3, p4, p2);
-  double d3 = direction(p1, p2, p3);
-  double d4 = direction(p1, p2, p4);
-
-  // If (p1, p2) and (p3, p4) straddle each other, the line segments must
-  // intersect.
-  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0))
-      && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
-    return true;
-  }
-  if (d1 == 0 && onSegment(p3, p4, p1)) {
-    return true;
-  }
-  if (d2 == 0 && onSegment(p3, p4, p2)) {
-    return true;
-  }
-  if (d3 == 0 && onSegment(p1, p2, p3)) {
-    return true;
-  }
-  if (d4 == 0 && onSegment(p1, p2, p4)) {
-    return true;
-  }
-  return false;
+  return which_side(p1, p2, p3) != which_side(p1, p2, p4) &&
+         which_side(p3, p4, p1) != which_side(p3, p4, p2);
 }
 
 // Obtain the intersection point for two intersecting line segments.

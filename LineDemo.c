@@ -75,8 +75,12 @@ void LineDemo_createLines(LineDemo* lineDemo) {
     windowToBox(&line->p1.x, &line->p1.y, px1, py1);
     windowToBox(&line->p2.x, &line->p2.y, px2, py2);
 
+    line->max_x_is_p1 = (line->p1.x > line->p2.x);
+    line->max_y_is_p1 = (line->p1.y > line->p2.y);
+
     // convert window velocity to box velocity
     velocityWindowToBox(&line->velocity.x, &line->velocity.y, vx, vy);
+    update_box(line, lineDemo->collisionWorld->timeStep);
 
     // store color
     line->color = (Color) isGray;
