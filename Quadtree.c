@@ -151,7 +151,7 @@ inline void Quadtree_detectCollisions(Quadtree* q,
                                           CILK_C_REDUCER_OPADD_TYPE(int)* n) {
   if (q->isLeaf) {
     // Loop through lines in this quadrant
-    for (int i = 0; i < q->numOfLines; i++) {
+    cilk_for (int i = 0; i < q->numOfLines; i++) {
       Line *l1 = q->lines[i];
 
       // Loop through lines in this quadrant to check for collision
