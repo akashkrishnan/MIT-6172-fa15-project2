@@ -39,8 +39,8 @@
 
 
 
-#define MIN(a,b) ((a<b)?a:b)
-#define MAX(a,b) ((a>b)?a:b)
+#define MIN(a,b) (((a)<(b)) ? a : b)
+#define MAX(a,b) (((a)>(b)) ? a : b)
 
 CollisionWorld* CollisionWorld_new(const unsigned int capacity) {
   assert(capacity > 0);
@@ -97,7 +97,7 @@ void CollisionWorld_updateLines(CollisionWorld* collisionWorld) {
 
 void CollisionWorld_updatePosition(CollisionWorld* collisionWorld) {
   double t = collisionWorld->timeStep;
-  cilk_for (int i = 0; i < collisionWorld->numOfLines; i++) {
+  for (int i = 0; i < collisionWorld->numOfLines; i++) {
     Line *line = collisionWorld->lines[i];
     line->p1 = Vec_add(line->p1, Vec_multiply(line->velocity, t));
     line->p2 = Vec_add(line->p2, Vec_multiply(line->velocity, t));
@@ -107,7 +107,7 @@ void CollisionWorld_updatePosition(CollisionWorld* collisionWorld) {
 void CollisionWorld_lineWallCollision(CollisionWorld* collisionWorld,
                                       CILK_C_REDUCER_OPADD_TYPE(int)* numCollisionsReducer) {
   REDUCER_VIEW(*numCollisionsReducer) = 0;
-  cilk_for (int i = 0; i < collisionWorld->numOfLines; i++) {
+  for (int i = 0; i < collisionWorld->numOfLines; i++) {
     Line *line = collisionWorld->lines[i];
 
     // Right side
