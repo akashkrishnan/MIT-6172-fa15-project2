@@ -10,7 +10,7 @@
 
 #include <cilk/reducer_opadd.h>
 
-#define MAX_LINES_PER_QUAD 65
+#define MAX_LINES_PER_QUAD 190
 
 typedef struct Quadtree Quadtree;
 
