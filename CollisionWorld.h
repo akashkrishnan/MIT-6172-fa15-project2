@@ -27,6 +27,8 @@
 #include "./Line.h"
 #include "./IntersectionDetection.h"
 
+#include <cilk/reducer_opadd.h>
+
 struct CollisionWorld {
   // Time step used for simulation
   double timeStep;
@@ -66,10 +68,10 @@ void CollisionWorld_updateLines(CollisionWorld* collisionWorld);
 void CollisionWorld_updatePosition(CollisionWorld* collisionWorld);
 
 // Handle line-wall collision.
-void CollisionWorld_lineWallCollision(CollisionWorld* collisionWorld);
+void CollisionWorld_lineWallCollision(CollisionWorld* collisionWorld, CILK_C_REDUCER_OPADD_TYPE(int)* numCollisionsReducer);
 
 // Detect line-line intersection.
-void CollisionWorld_detectIntersection(CollisionWorld* collisionWorld);
+void CollisionWorld_detectIntersection(CollisionWorld* collisionWorld, CILK_C_REDUCER_OPADD_TYPE(int)* numCollisionsReducer);
 
 // Get total number of line-wall collisions.
 unsigned int CollisionWorld_getNumLineWallCollisions(

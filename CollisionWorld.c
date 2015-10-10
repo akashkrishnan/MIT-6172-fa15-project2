@@ -28,10 +28,19 @@
 #include <assert.h>
 #include <stdio.h>
 
+#include <cilk/cilk.h>
+#include <cilk/reducer.h>
+#include <cilk/reducer_opadd.h>
+
 #include "./IntersectionDetection.h"
 #include "./IntersectionEventList.h"
 #include "./Line.h"
 #include "./Quadtree.h"
+
+
+
+#define MIN(a,b) ((a<b)?a:b)
+#define MAX(a,b) ((a>b)?a:b)
 
 CollisionWorld* CollisionWorld_new(const unsigned int capacity) {
   assert(capacity > 0);
@@ -62,8 +71,11 @@ unsigned int CollisionWorld_getNumOfLines(CollisionWorld* collisionWorld) {
 }
 
 void CollisionWorld_addLine(CollisionWorld* collisionWorld, Line *line) {
+  line->length = Vec_length(Vec_subtract(line->p1, line->p2));
+  updateParallelogram(line, collisionWorld->timeStep);
   collisionWorld->lines[collisionWorld->numOfLines] = line;
   collisionWorld->numOfLines++;
+  
 }
 
 Line* CollisionWorld_getLine(CollisionWorld* collisionWorld,
@@ -75,96 +87,113 @@ Line* CollisionWorld_getLine(CollisionWorld* collisionWorld,
 }
 
 void CollisionWorld_updateLines(CollisionWorld* collisionWorld) {
-  CollisionWorld_detectIntersection(collisionWorld);
+  CILK_C_REDUCER_OPADD(numCollisionsReducer, int, 0);
+  CILK_C_REGISTER_REDUCER(numCollisionsReducer);
+  CollisionWorld_detectIntersection(collisionWorld, &numCollisionsReducer);
   CollisionWorld_updatePosition(collisionWorld);
-  CollisionWorld_lineWallCollision(collisionWorld);
+  CollisionWorld_lineWallCollision(collisionWorld, &numCollisionsReducer);
+  CILK_C_UNREGISTER_REDUCER(numCollisionsReducer);
 }
 
 void CollisionWorld_updatePosition(CollisionWorld* collisionWorld) {
   double t = collisionWorld->timeStep;
-  for (int i = 0; i < collisionWorld->numOfLines; i++) {
+  cilk_for (int i = 0; i < collisionWorld->numOfLines; i++) {
     Line *line = collisionWorld->lines[i];
     line->p1 = Vec_add(line->p1, Vec_multiply(line->velocity, t));
     line->p2 = Vec_add(line->p2, Vec_multiply(line->velocity, t));
   }
 }
 
-void CollisionWorld_lineWallCollision(CollisionWorld* collisionWorld) {
-  for (int i = 0; i < collisionWorld->numOfLines; i++) {
+void CollisionWorld_lineWallCollision(CollisionWorld* collisionWorld,
+                                      CILK_C_REDUCER_OPADD_TYPE(int)* numCollisionsReducer) {
+  REDUCER_VIEW(*numCollisionsReducer) = 0;
+  cilk_for (int i = 0; i < collisionWorld->numOfLines; i++) {
     Line *line = collisionWorld->lines[i];
-    bool collide = false;
 
     // Right side
-    if ((line->p1.x > BOX_XMAX || line->p2.x > BOX_XMAX)
-        && (line->velocity.x > 0)) {
+    if (MAX(line->p1.x,line->p2.x) > BOX_XMAX && (line->velocity.x > 0)) {
       line->velocity.x = -line->velocity.x;
-      collide = true;
+      REDUCER_VIEW(*numCollisionsReducer)++;
     }
     // Left side
-    if ((line->p1.x < BOX_XMIN || line->p2.x < BOX_XMIN)
-        && (line->velocity.x < 0)) {
+    else if (MIN(line->p1.x,line->p2.x) < BOX_XMIN && (line->velocity.x < 0)) {
       line->velocity.x = -line->velocity.x;
-      collide = true;
+      REDUCER_VIEW(*numCollisionsReducer)++;
     }
     // Top side
-    if ((line->p1.y > BOX_YMAX || line->p2.y > BOX_YMAX)
-        && (line->velocity.y > 0)) {
+    else if (MAX(line->p1.y,line->p2.y) > BOX_YMAX && (line->velocity.y > 0)) {
       line->velocity.y = -line->velocity.y;
-      collide = true;
+      REDUCER_VIEW(*numCollisionsReducer)++;
     }
     // Bottom side
-    if ((line->p1.y < BOX_YMIN || line->p2.y < BOX_YMIN)
-        && (line->velocity.y < 0)) {
+    else if (MIN(line->p1.y,line->p2.y) < BOX_YMIN && (line->velocity.y < 0)) {
       line->velocity.y = -line->velocity.y;
-      collide = true;
+      REDUCER_VIEW(*numCollisionsReducer)++;
     }
-    // Update total number of collisions.
-    if (collide == true) {
-      collisionWorld->numLineWallCollisions++;
-    }
+    
+    // precalculate the parallelogram created by final velocity
+    updateParallelogram(line, collisionWorld->timeStep);
   }
+  collisionWorld->numLineWallCollisions += REDUCER_VIEW(*numCollisionsReducer);
 }
 
-void CollisionWorld_detectIntersection(CollisionWorld* collisionWorld) {
-  IntersectionEventList intersectionEventList = IntersectionEventList_make();
-
+void CollisionWorld_detectIntersection(CollisionWorld* collisionWorld, CILK_C_REDUCER_OPADD_TYPE(int)* numCollisionsReducer) {
+  IntersectionEventListReducer intersectionEventListReducer = CILK_C_INIT_REDUCER(
+    IntersectionEventList,
+    intersection_event_list_reduce,
+    intersection_event_list_identity,
+    intersection_event_list_destroy,
+    IntersectionEventList_make()
+  );
+  CILK_C_REGISTER_REDUCER(intersectionEventListReducer);
+  
   // Use Quadtree to detect line-line collisions
   Quadtree* q = Quadtree_create(
     collisionWorld,
     Vec_make(BOX_XMIN, BOX_YMIN),
     Vec_make(BOX_XMAX, BOX_YMAX)
   );
-  collisionWorld->numLineLineCollisions +=
-    Quadtree_detectCollisions(q, &intersectionEventList);
-  Quadtree_delete(q);
+  Quadtree_detectCollisions(q, &intersectionEventListReducer, numCollisionsReducer);
+  Quadtree_delete(q);  
+
+  int numCollisions = REDUCER_VIEW(*numCollisionsReducer);
+  IntersectionEventList intersectionEventList = REDUCER_VIEW(intersectionEventListReducer);
 
   // Sort the intersection event list.
   IntersectionEventNode* startNode = intersectionEventList.head;
   while (startNode != NULL) {
     IntersectionEventNode* minNode = startNode;
     IntersectionEventNode* curNode = startNode->next;
+    IntersectionEventNode* prevNode = startNode;
+    IntersectionEventNode* delNode;
     while (curNode != NULL) {
-      if (IntersectionEventNode_compareData(curNode, minNode) < 0) {
-        minNode = curNode;
+      int comp = IntersectionEventNode_compareData(curNode, minNode);
+      if (comp == 0) {
+        delNode = curNode;
+        curNode = curNode->next;
+        prevNode->next = curNode;
+        free(delNode);
+        numCollisions--;
+      } else {
+        if (comp < 0) {
+          minNode = curNode;
+        }
+        prevNode = curNode;
+        curNode = curNode->next;
       }
-      curNode = curNode->next;
     }
     if (minNode != startNode) {
       IntersectionEventNode_swapData(minNode, startNode);
     }
+    CollisionWorld_collisionSolver(collisionWorld, startNode->l1, startNode->l2,
+                                   startNode->intersectionType);
     startNode = startNode->next;
   }
 
-  // Call the collision solver for each intersection event.
-  IntersectionEventNode* curNode = intersectionEventList.head;
-
-  while (curNode != NULL) {
-    CollisionWorld_collisionSolver(collisionWorld, curNode->l1, curNode->l2,
-                                   curNode->intersectionType);
-    curNode = curNode->next;
-  }
-
   IntersectionEventList_deleteNodes(&intersectionEventList);
+  
+  collisionWorld->numLineLineCollisions += numCollisions;
+  CILK_C_UNREGISTER_REDUCER(intersectionEventListReducer);
 }
 
 unsigned int CollisionWorld_getNumLineWallCollisions(
@@ -233,8 +262,8 @@ void CollisionWorld_collisionSolver(CollisionWorld* collisionWorld,
   double v2Normal = Vec_dotProduct(l2->velocity, normal);
 
   // Compute the mass of each line (we simply use its length).
-  double m1 = Vec_length(Vec_subtract(l1->p1, l1->p2));
-  double m2 = Vec_length(Vec_subtract(l2->p1, l2->p2));
+  double m1 = l1->length;
+  double m2 = l2->length;
 
   // Perform the collision calculation (computes the new velocities along
   // the direction normal to the collision face such that momentum and

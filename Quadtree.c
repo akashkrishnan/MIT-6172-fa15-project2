@@ -6,6 +6,10 @@
 #include "./IntersectionEventList.h"
 #include "./IntersectionDetection.h"
 
+#include <cilk/cilk.h>
+#include <cilk/reducer.h>
+#include <cilk/reducer_opadd.h>
+
 inline Quadtree* Quadtree_create(CollisionWorld* world,
                           Vec topLeft,
                           Vec botRight) {
@@ -142,16 +146,16 @@ inline void Quadtree_divide(Quadtree* q) {
   );
 }
 
-inline unsigned int Quadtree_detectCollisions(Quadtree* q,
-                                       IntersectionEventList* iel) {
-  unsigned int n = 0, i, j;
+inline void Quadtree_detectCollisions(Quadtree* q,
+                                          IntersectionEventListReducer* iel,
+                                          CILK_C_REDUCER_OPADD_TYPE(int)* n) {
   if (q->isLeaf) {
     // Loop through lines in this quadrant
-    for (i = 0; i < q->numOfLines; i++) {
-    Line *l1 = q->lines[i];
+    for (int i = 0; i < q->numOfLines; i++) {
+      Line *l1 = q->lines[i];
 
       // Loop through lines in this quadrant to check for collision
-      for (j = i + 1; j < q->numOfLines; j++) {
+      for (int j = i + 1; j < q->numOfLines; j++) {
         Line *l2 = q->lines[j];
 
         // Swap lines if necessary for intersect function
@@ -161,47 +165,31 @@ inline unsigned int Quadtree_detectCollisions(Quadtree* q,
           l2 = tmp;
         }
 
-        // Check if lines intersect
-        IntersectionType type = intersect(l1, l2, q->world->timeStep);
-        if (type != NO_INTERSECTION) {
-          // Check for duplicate collision
-          IntersectionEventNode* temp = malloc(sizeof(IntersectionEventNode));
-          if (temp == NULL) {
-            return 0;
-          }
-          temp->l1 = l1;
-          temp->l2 = l2;
-          
-          bool dupe = false;
-          IntersectionEventNode* curr = iel->head;
-          IntersectionEventNode* next = NULL;
-          
-          // TODO: THIS IS VERY INEFFICIENT
-          // Loop through all events, checking for duplicate
-          while (curr != NULL) {
-            next = curr->next;
-            if (IntersectionEventNode_compareData(curr, temp) == 0){
-              dupe = true;
-              break;
-            }
-            curr = next;
-          }
-          
-          free(temp);
-          
-          if (!dupe){
-            IntersectionEventList_appendNode(iel, l1, l2, type);
-            n++;
-          }
+        Vec p1;
+        Vec p2;
+        // Get relative velocity.
+        Vec shift;
+        shift.x = l2->shift.x - l1->shift.x;
+        shift.y = l2->shift.y - l1->shift.y;
+
+        // Get the parallelogram.
+        p1.x = l2->p1.x + shift.x;
+        p1.y = l2->p1.y + shift.y;
+  
+        p2.x = l2->p2.x + shift.x;
+        p2.y = l2->p2.y + shift.y;
+        if (fastIntersect(l1, l2, p1, p2)) {
+          IntersectionEventList_appendNode(&REDUCER_VIEW(*iel), l1, l2,
+                                    intersect(l1, l2, p1, p2));
+          REDUCER_VIEW(*n)++;        
         }
       }
     }
   } else {
     // Recurssively add collisions in 4 quadrants
     for (int i = 0; i < 4; i++) {
-      n += Quadtree_detectCollisions(q->quads[i], iel);
+      Quadtree_detectCollisions(q->quads[i], iel, n);
     }
   }
-  return n;
 }
 

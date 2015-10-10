@@ -27,30 +27,30 @@
 #include "./Line.h"
 #include "./Vec.h"
 
-// Detect if lines l1 and l2 will intersect between now and the next time step.
-inline IntersectionType intersect(Line *l1, Line *l2, double time) {
+#define MIN(a,b) ((a<b)?a:b)
+#define MAX(a,b) ((a>b)?a:b)
+
+inline IntersectionType intersect(Line *l1, Line *l2, Vec p1, Vec p2) {
   assert(compareLines(l1, l2) < 0);
 
-  Vec velocity;
-  Vec p1;
-  Vec p2;
-  Vec v1 = Vec_makeFromLine(*l1);
-  Vec v2 = Vec_makeFromLine(*l2);
-
-  // Get relative velocity.
-  velocity = Vec_subtract(l2->velocity, l1->velocity);
-
-  // Get the parallelogram.
-  p1 = Vec_add(l2->p1, Vec_multiply(velocity, time));
-  p2 = Vec_add(l2->p2, Vec_multiply(velocity, time));
-
-  int num_line_intersections = 0;
-  bool top_intersected = false;
-  bool bottom_intersected = false;
-
+  // lines intersect before timestep
   if (intersectLines(l1->p1, l1->p2, l2->p1, l2->p2)) {
     return ALREADY_INTERSECTED;
   }
+
+  // There is a parallelogram formed by the motion of the second line.
+  // Passes if the second line completely passes the first line.
+  if (pointInParallelogram(l1->p1, l2->p1, l2->p2, p1, p2)
+      && pointInParallelogram(l1->p2, l2->p1, l2->p2, p1, p2)) {
+    return L1_WITH_L2;
+  }
+
+  // Check the number of line intersections, as it is possible
+  // for neither of the two l1 endpoints to be within the l2 parallelogram.
+  int num_line_intersections = 0;
+  bool top_intersected = false;
+  bool bottom_intersected = false;
+  
   if (intersectLines(l1->p1, l1->p2, p1, p2)) {
     num_line_intersections++;
   }
@@ -58,43 +58,74 @@ inline IntersectionType intersect(Line *l1, Line *l2, double time) {
     num_line_intersections++;
     top_intersected = true;
   }
+  if (num_line_intersections == 2) {
+    return L2_WITH_L1;
+  }
   if (intersectLines(l1->p1, l1->p2, p2, l2->p2)) {
     num_line_intersections++;
     bottom_intersected = true;
   }
 
+  // Calculate angle to determine type of intersection.
+  Vec v1 = Vec_makeFromLine(*l1);
+  Vec v2 = Vec_makeFromLine(*l2);
+  double angle = Vec_angle(v1, v2);
+
   if (num_line_intersections == 2) {
     return L2_WITH_L1;
   }
-
-  if (pointInParallelogram(l1->p1, l2->p1, l2->p2, p1, p2)
-      && pointInParallelogram(l1->p2, l2->p1, l2->p2, p1, p2)) {
-    return L1_WITH_L2;
+  
+  if (top_intersected && angle < 0){
+    return L2_WITH_L1;
   }
-
-  if (num_line_intersections == 0) {
-    return NO_INTERSECTION;
-  }
-
-  double angle = Vec_angle(v1, v2);
-
-  if (top_intersected) {
-    if (angle < 0) {
-      return L2_WITH_L1;
-    } else {
-      return L1_WITH_L2;
-    }
-  }
-
-  if (bottom_intersected) {
-    if (angle > 0) {
-      return L2_WITH_L1;
-    } else {
-      return L1_WITH_L2;
-    }
+  if (bottom_intersected && angle > 0){
+    return L2_WITH_L1;
   }
 
   return L1_WITH_L2;
+}
+
+inline IntersectionType fastIntersect(Line *l1, Line *l2, Vec p1, Vec p2) {
+  assert(compareLines(l1, l2) < 0);
+  
+  // Variables to avoid looking up p1 and p2 for lines 1 and 2 each time.
+  Vec l1p1 = l1->p1;
+  Vec l1p2 = l1->p2;
+  Vec l2p1 = l2->p1;
+  Vec l2p2 = l2->p2;
+
+  // Bounding box: check if one line is entirely to one side or the other
+  // of the parallelogram created by the movement of line 2 relative to line 1.
+  if (MAX(l1p1.x,l1p2.x) < MIN(MIN(l2p1.x,l2p2.x),MIN(p1.x,p2.x))) {
+    return false;
+  }
+  if (MIN(l1p1.x,l1p2.x) > MAX(MAX(l2p1.x,l2p2.x),MAX(p1.x,p2.x))) {
+    return false;
+  }
+  if (MAX(l1p1.y,l1p2.y) < MIN(MIN(l2p1.y,l2p2.y),MIN(p1.y,p2.y))) {
+    return false;
+  }
+  if (MIN(l1p1.y,l1p2.y) > MAX(MAX(l2p1.y,l2p2.y),MAX(p1.y,p2.y))) {
+    return false;
+  }
+
+  // Check for overlap of line with parallelogram.
+  if (pointInParallelogram(l1p1, l2p1, l2p2, p1, p2)) {
+    return true;
+  }
+  if (pointInParallelogram(l1p2, l2p1, l2p2, p1, p2)) {
+    return true;
+  }
+  if (intersectLines(l1p1, l1p2, l2p1, l2p2)) {
+    return true;
+  }
+  if (intersectLines(l1p1, l1p2, p1, p2)) {
+    return true;
+  }
+  if (intersectLines(l1p1, l1p2, p1, l2p1)) {
+    return true;
+  }
+  return false;
 }
 
 // Check if a point is in the square.

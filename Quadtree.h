@@ -8,6 +8,8 @@
 #include "./Line.h"
 #include "./IntersectionEventList.h"
 
+#include <cilk/reducer_opadd.h>
+
 #define MAX_LINES_PER_QUAD 65
 
 typedef struct Quadtree Quadtree;
@@ -47,7 +49,7 @@ bool Quadtree_addLine(Quadtree* q, Line* l);
 
 void Quadtree_divide(Quadtree* q);
 
-unsigned int Quadtree_detectCollisions(Quadtree* q, IntersectionEventList* iel);
+void Quadtree_detectCollisions(Quadtree* q, IntersectionEventListReducer* iel, CILK_C_REDUCER_OPADD_TYPE(int)* n);
 
 #endif // QUADTREE_H_
 

@@ -102,3 +102,31 @@ inline void IntersectionEventList_deleteNodes(
   intersectionEventList->head = NULL;
   intersectionEventList->tail = NULL;
 }
+
+void merge_lists(IntersectionEventList* list1, IntersectionEventList* list2) {
+  if (list2->head != NULL){
+    if (list1->head == NULL) {
+      list1->head = list2->head;
+    }
+    else {
+      list1->tail->next = list2->head;
+    }
+    list1->tail = list2->tail;
+    list2->head = NULL;
+    list2->tail = NULL;
+  }
+}
+
+void intersection_event_list_reduce(void* key, void* left, void* right){
+  merge_lists((IntersectionEventList *)left,(IntersectionEventList *)right);
+};
+
+void intersection_event_list_identity(void* key, void* value){
+  IntersectionEventList *old_list = (IntersectionEventList *)value;
+  old_list->head = NULL;
+  old_list->tail = NULL;
+};
+
+void intersection_event_list_destroy(void* key, void* value){
+  IntersectionEventList_deleteNodes((IntersectionEventList *)value);
+};

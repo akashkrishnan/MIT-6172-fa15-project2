@@ -35,7 +35,9 @@ typedef enum {
 
 // Detect if line l1 and l2 will be intersected in the next time step.
 // Precondition: compareLines(l1, l2) < 0 must be true.
-IntersectionType intersect(Line *l1, Line *l2, double time);
+IntersectionType intersect(Line *l1, Line *l2, Vec p1, Vec p2);
+
+IntersectionType fastIntersect(Line *l1, Line *l2, Vec p1, Vec p2);
 
 // Check if a point is in the square.
 bool pointInSquare(Vec point, Vec p1, Vec p4);

@@ -53,9 +53,17 @@ typedef enum {
 struct Line {
   Vec p1;  // One endpoint of the line.
   Vec p2;  // The other endpoint of the line.
-
+  Vec p3; // Parallelogram extension of p1
+  Vec p4; // Parallelogram extension of p2
+ 
   // The line's current velocity, in units of pixels per time step.
   Vec velocity;
+  Vec distancePerTimestep;
+  
+  // The line's current velocity * timestep 
+  Vec shift;
+  
+  vec_dimension length;
 
   Color color;  // The line's color.
 
@@ -96,6 +104,12 @@ static inline void velocityWindowToBox(box_dimension *xout, box_dimension *yout,
                                        window_dimension x, window_dimension y) {
   *xout = x / WINDOW_WIDTH * ((double) BOX_XMAX - BOX_XMIN);
   *yout = y / WINDOW_HEIGHT * ((double) BOX_YMAX - BOX_YMIN);
+}
+
+static inline void updateParallelogram(Line *line, double timeStep){
+  line->shift = Vec_multiply(line->velocity, timeStep);
+  line->p3 = Vec_add(line->p1, line->shift);
+  line->p4 = Vec_add(line->p2, line->shift);
 }
 
 #endif  // LINE_H_
