@@ -186,8 +186,8 @@ inline void Quadtree_detectCollisions(Quadtree* q,
       }
     }
   } else {
-    // Recurssively add collisions in 4 quadrants
-    for (int i = 0; i < 4; i++) {
+    // Recursively add collisions in 4 quadrants
+    cilk_for (int i = 0; i < 4; i++) {
       Quadtree_detectCollisions(q->quads[i], iel, n);
     }
   }
