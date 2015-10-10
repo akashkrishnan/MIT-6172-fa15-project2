@@ -68,10 +68,6 @@ unsigned int CollisionWorld_getNumOfLines(CollisionWorld* collisionWorld) {
 
 void CollisionWorld_addLine(CollisionWorld* cw, Line *line) {
   cw->lines[cw->numOfLines] = line;
-  cw->line_nodes[cw->numOfLines] = LineNode_make(line);
-  assert(line);
-  assert(cw->line_nodes[cw->numOfLines]);
-  assert(cw->line_nodes[cw->numOfLines]->line);
   cw->numOfLines++;
 }
 
@@ -163,7 +159,7 @@ QuadTree* build_quadtree(CollisionWorld* cw) {
   int type;
   for (int i = 0; i < n; i++) {
     update_box(cw->lines[i], timeStep);
-    curr = cw->line_nodes[i];
+    curr = LineNode_make(cw->lines[i]);
     assert(curr);
     assert(curr->line);
     type = QuadTree_getQuad(q, curr, timeStep);
@@ -196,24 +192,32 @@ QuadTree* build_quadtree(CollisionWorld* cw) {
   if (quad1->head) {
     q->quads[0] = QuadTree_make(x1, x, y1, y);
     QuadTree_addLines(q->quads[0], quad1, timeStep);
+  } else {
+    LineList_delete(quad1);
   }
 
   // TOP RIGHT
   if (quad2->head) {
     q->quads[1] = QuadTree_make(x, x2, y1, y);
     QuadTree_addLines(q->quads[1], quad2, timeStep);
+  } else {
+    LineList_delete(quad2);
   }
 
   // BOTTOM LEFT
   if (quad3->head) {
     q->quads[2] = QuadTree_make(x1, x, y, y2);
     QuadTree_addLines(q->quads[2], quad3, timeStep);
+  } else {
+    LineList_delete(quad3);
   }
 
   // BOTTOM RIGHT
   if (quad4->head) {
     q->quads[3] = QuadTree_make(x, x2, y, y2);
     QuadTree_addLines(q->quads[3], quad4, timeStep);
+  } else {
+    LineList_delete(quad4);
   }
 
   return q;

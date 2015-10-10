@@ -13,6 +13,7 @@ inline LineNode* LineNode_make(Line* l) {
 }
 
 inline void LineNode_delete(LineNode* ln) {
+  assert(ln);
   free(ln);
 }
 
@@ -178,24 +179,32 @@ inline void QuadTree_addLines(QuadTree* q, LineList* ll, double timeStep) {
   if (quad1->head) {
     q->quads[0] = QuadTree_make(x1, x, y1, y);
     QuadTree_addLines(q->quads[0], quad1, timeStep);
+  } else {
+    LineList_delete(quad1);
   }
 
   // TOP RIGHT
   if (quad2->head) {
     q->quads[1] = QuadTree_make(x, x2, y1, y);
     QuadTree_addLines(q->quads[1], quad2, timeStep);
+  } else {
+    LineList_delete(quad2);
   }
 
   // BOTTOM LEFT
   if (quad3->head) {
     q->quads[2] = QuadTree_make(x1, x, y, y2);
     QuadTree_addLines(q->quads[2], quad3, timeStep);
+  } else {
+    LineList_delete(quad3);
   }
 
   // BOTTOM RIGHT
   if (quad4->head) {
     q->quads[3] = QuadTree_make(x, x2, y, y2);
     QuadTree_addLines(q->quads[3], quad4, timeStep);
+  } else {
+    LineList_delete(quad4);
   }
 }
 
