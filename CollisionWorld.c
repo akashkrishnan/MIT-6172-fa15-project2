@@ -33,10 +33,6 @@
 #include "./Line.h"
 #include "./Quadtree.h"
 
-#include <cilk/cilk.h>
-
-#define MAX_INTERSECTS 20
-
 CollisionWorld* CollisionWorld_new(const unsigned int capacity) {
   assert(capacity > 0);
 
@@ -100,42 +96,38 @@ void CollisionWorld_updatePosition(CollisionWorld* cw) {
   }
 }
 
-void CollisionWorld_lineWallCollision(CollisionWorld* cw) {
-  for (int i = 0; i < cw->numOfLines; i++) {
-    Line* l = cw->lines[i];
+void CollisionWorld_lineWallCollision(CollisionWorld* collisionWorld) {
+  for (int i = 0; i < collisionWorld->numOfLines; i++) {
+    Line *line = collisionWorld->lines[i];
     bool collide = false;
 
     // Right side
-    if ((l->p1.x > BOX_XMAX || l->p2.x > BOX_XMAX)
-        && (l->velocity.x > 0)) {
-      l->velocity.x = -l->velocity.x;
+    if ((line->p1.x > BOX_XMAX || line->p2.x > BOX_XMAX)
+        && (line->velocity.x > 0)) {
+      line->velocity.x = -line->velocity.x;
       collide = true;
     }
-
     // Left side
-    if ((l->p1.x < BOX_XMIN || l->p2.x < BOX_XMIN)
-        && (l->velocity.x < 0)) {
-      l->velocity.x = -l->velocity.x;
+    if ((line->p1.x < BOX_XMIN || line->p2.x < BOX_XMIN)
+        && (line->velocity.x < 0)) {
+      line->velocity.x = -line->velocity.x;
       collide = true;
     }
-
     // Top side
-    if ((l->p1.y > BOX_YMAX || l->p2.y > BOX_YMAX)
-        && (l->velocity.y > 0)) {
-      l->velocity.y = -l->velocity.y;
+    if ((line->p1.y > BOX_YMAX || line->p2.y > BOX_YMAX)
+        && (line->velocity.y > 0)) {
+      line->velocity.y = -line->velocity.y;
       collide = true;
     }
-
     // Bottom side
-    if ((l->p1.y < BOX_YMIN || l->p2.y < BOX_YMIN)
-        && (l->velocity.y < 0)) {
-      l->velocity.y = -l->velocity.y;
+    if ((line->p1.y < BOX_YMIN || line->p2.y < BOX_YMIN)
+        && (line->velocity.y < 0)) {
+      line->velocity.y = -line->velocity.y;
       collide = true;
     }
-
     // Update total number of collisions.
-    if (collide) {
-      cw->numLineWallCollisions++;
+    if (collide == true) {
+      collisionWorld->numLineWallCollisions++;
     }
   }
 }
@@ -164,97 +156,10 @@ QuadTree* build_quadtree(CollisionWorld* cw) {
   return q;
 }
 
-IntersectionEventList CollisionWorld_getIntersectionEvents(QuadTree* q,
-                                                           double timeStep,
-                                                           LineList* lines) {
-  IntersectionEventList iel = IntersectionEventList_make();
-  if (q == NULL) {
-    return iel;
-  }
-
-  LineNode* first_node = q->lines->head;
-  LineNode* second_node;
-
-  while (first_node) {
-    second_node = first_node->next;
-    while (second_node != NULL) {
-      Line* l1 = first_node->line;
-      Line* l2 = second_node->line;
-
-      if (compareLines(l1, l2) >= 0) {
-        Line *temp = l1;
-        l1 = l2;
-        l2 = temp;
-      }
-
-      IntersectionType type = intersect(l1, l2, timeStep);
-      if (type != NO_INTERSECTION) {
-        IntersectionEventList_appendNode(&iel, l1, l2, type);
-      }
-
-      second_node = second_node->next;
-    }
-    first_node = first_node->next;
-  }
-
-  first_node = q->lines->head;
-  while (first_node != NULL) {
-    second_node = lines ? lines->head : NULL;
-    while (second_node != NULL) {
-      Line* l1 = first_node->line;
-      Line* l2 = second_node->line;
-
-      if (compareLines(l1, l2) >= 0) {
-        Line *temp = l1;
-        l1 = l2;
-        l2 = temp;
-      }
-
-      IntersectionType type = intersect(l1, l2, timeStep);
-      if (type != NO_INTERSECTION) {
-        IntersectionEventList_appendNode(&iel, l1, l2, type);
-      }
-
-      second_node = second_node->next;
-    }
-    first_node = first_node->next;
-  }
-
-  IntersectionEventList ielQ1;
-  IntersectionEventList ielQ2;
-  IntersectionEventList ielQ3;
-  IntersectionEventList ielQ4;
-
-  if (lines) {
-    LineList_concat(q->lines, lines);
-  }
-
-  /*if (q->lines->count > MAX_INTERSECTS) {
-    ielQ1 = cilk_spawn CollisionWorld_getIntersectionEvents(q->quads[0], timeStep, q->lines);
-    ielQ2 = cilk_spawn CollisionWorld_getIntersectionEvents(q->quads[1], timeStep, q->lines);
-    ielQ3 = cilk_spawn CollisionWorld_getIntersectionEvents(q->quads[2], timeStep, q->lines);
-    ielQ4 = CollisionWorld_getIntersectionEvents(q->quads[3], timeStep, q->lines);
-    cilk_sync;
-  } else {*/
-    ielQ1 = CollisionWorld_getIntersectionEvents(q->quads[0], timeStep, q->lines);
-    ielQ2 = CollisionWorld_getIntersectionEvents(q->quads[1], timeStep, q->lines);
-    ielQ3 = CollisionWorld_getIntersectionEvents(q->quads[2], timeStep, q->lines);
-    ielQ4 = CollisionWorld_getIntersectionEvents(q->quads[3], timeStep, q->lines);
-  //}
-
-  IntersectionEventList_concat(&iel, &ielQ1);
-  IntersectionEventList_concat(&iel, &ielQ2);
-  IntersectionEventList_concat(&iel, &ielQ3);
-  IntersectionEventList_concat(&iel, &ielQ4);
-
-  return iel;
-}
-
 void CollisionWorld_detectIntersection(CollisionWorld* cw) {
+  // Use QuadTree to get line-line intersections
   QuadTree* q = build_quadtree(cw);
-  IntersectionEventList iel = CollisionWorld_getIntersectionEvents(q,
-                                                                   cw->timeStep,
-                                                                   NULL);
+  IntersectionEventList iel = QuadTree_detectEvents(q, NULL, cw->timeStep);
   cw->numLineLineCollisions += iel.count;
   QuadTree_delete(q);
 

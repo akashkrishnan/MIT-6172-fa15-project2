@@ -115,14 +115,19 @@ IntersectionType intersect(Line *l1, Line *l2, double time) {
 bool pointInParallelogram(Vec point, Vec p1, Vec p2, Vec p3, Vec p4) {
   double d1 = direction(p1, p2, point);
   double d2 = direction(p3, p4, point);
+  
+  if ((d1 < 0 && d2 < 0) || (d1 > 0 && d2 > 0)) {
+    return false;
+  }
+
   double d3 = direction(p1, p3, point);
   double d4 = direction(p2, p4, point);
-
-  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0))
-      && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
-    return true;
+  
+  if ((d3 < 0 && d4 < 0) || (d3 > 0 && d4 > 0)) {
+    return false;
   }
-  return false;
+
+  return true;
 }
 
 // Check if two lines intersect.
