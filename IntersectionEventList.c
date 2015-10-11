@@ -25,7 +25,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
-int IntersectionEventNode_compareData(IntersectionEventNode* node1,
+inline int IntersectionEventNode_compareData(IntersectionEventNode* node1,
                                       IntersectionEventNode* node2) {
   if (compareLines(node1->l1, node2->l1) < 0) {
     return -1;
@@ -42,7 +42,7 @@ int IntersectionEventNode_compareData(IntersectionEventNode* node1,
   }
 }
 
-void IntersectionEventNode_swapData(IntersectionEventNode* node1,
+inline void IntersectionEventNode_swapData(IntersectionEventNode* node1,
                                     IntersectionEventNode* node2) {
   {
     Line* temp = node1->l1;
@@ -61,7 +61,7 @@ void IntersectionEventNode_swapData(IntersectionEventNode* node1,
   }
 }
 
-IntersectionEventList IntersectionEventList_make() {
+inline IntersectionEventList IntersectionEventList_make() {
   IntersectionEventList intersectionEventList;
   intersectionEventList.head = NULL;
   intersectionEventList.tail = NULL;
@@ -69,7 +69,7 @@ IntersectionEventList IntersectionEventList_make() {
   return intersectionEventList;
 }
 
-void IntersectionEventList_appendNode(
+inline void IntersectionEventList_appendNode(
     IntersectionEventList* intersectionEventList, Line* l1, Line* l2,
     IntersectionType intersectionType) {
   assert(compareLines(l1, l2) < 0);
@@ -92,7 +92,7 @@ void IntersectionEventList_appendNode(
   intersectionEventList->count++;
 }
 
-void IntersectionEventList_concat(IntersectionEventList* list1,
+inline void IntersectionEventList_concat(IntersectionEventList* list1,
                                   IntersectionEventList* list2) {
   if (list2 == NULL) return;
   if (list1->head == NULL) {
@@ -110,7 +110,7 @@ void IntersectionEventList_concat(IntersectionEventList* list1,
   list2->count = 0;
 }
 
-void IntersectionEventList_deleteNodes(
+inline void IntersectionEventList_deleteNodes(
     IntersectionEventList* intersectionEventList) {
   IntersectionEventNode* curNode = intersectionEventList->head;
   IntersectionEventNode* nextNode = NULL;

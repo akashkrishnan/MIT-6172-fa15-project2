@@ -37,7 +37,7 @@ inline static bool which_side(Vec E, Vec F, Vec P) {
 }
 
 // Detect if lines l1 and l2 will intersect between now and the next time step.
-IntersectionType intersect(Line *l1, Line *l2, double time) {
+inline IntersectionType intersect(Line *l1, Line *l2, double time) {
   assert(compareLines(l1, l2) < 0);
 
   if (!rectangles_overlap(l1, l2)) {
@@ -112,7 +112,7 @@ IntersectionType intersect(Line *l1, Line *l2, double time) {
 }
 
 // Check if a point is in the parallelogram.
-bool pointInParallelogram(Vec point, Vec p1, Vec p2, Vec p3, Vec p4) {
+inline bool pointInParallelogram(Vec point, Vec p1, Vec p2, Vec p3, Vec p4) {
   double d1 = direction(p1, p2, point);
   double d2 = direction(p3, p4, point);
   
@@ -131,13 +131,13 @@ bool pointInParallelogram(Vec point, Vec p1, Vec p2, Vec p3, Vec p4) {
 }
 
 // Check if two lines intersect.
-bool intersectLines(Vec p1, Vec p2, Vec p3, Vec p4) {
+inline bool intersectLines(Vec p1, Vec p2, Vec p3, Vec p4) {
   return which_side(p1, p2, p3) != which_side(p1, p2, p4) &&
          which_side(p3, p4, p1) != which_side(p3, p4, p2);
 }
 
 // Obtain the intersection point for two intersecting line segments.
-Vec getIntersectionPoint(Vec p1, Vec p2, Vec p3, Vec p4) {
+inline Vec getIntersectionPoint(Vec p1, Vec p2, Vec p3, Vec p4) {
   double u;
 
   u = ((p4.x - p3.x) * (p1.y - p3.y) - (p4.y - p3.y) * (p1.x - p3.x))
@@ -147,13 +147,13 @@ Vec getIntersectionPoint(Vec p1, Vec p2, Vec p3, Vec p4) {
 }
 
 // Check the direction of two lines (pi, pj) and (pi, pk).
-double direction(Vec pi, Vec pj, Vec pk) {
+inline double direction(Vec pi, Vec pj, Vec pk) {
   return crossProduct(pk.x - pi.x, pk.y - pi.y, pj.x - pi.x, pj.y - pi.y);
 }
 
 // Check if a point pk is in the line segment (pi, pj).
 // pi, pj, and pk must be collinear.
-bool onSegment(Vec pi, Vec pj, Vec pk) {
+inline bool onSegment(Vec pi, Vec pj, Vec pk) {
   if (((pi.x <= pk.x && pk.x <= pj.x) || (pj.x <= pk.x && pk.x <= pi.x))
       && ((pi.y <= pk.y && pk.y <= pj.y) || (pj.y <= pk.y && pk.y <= pi.y))) {
     return true;
@@ -162,7 +162,7 @@ bool onSegment(Vec pi, Vec pj, Vec pk) {
 }
 
 // Calculate the cross product.
-double crossProduct(double x1, double y1, double x2, double y2) {
+inline double crossProduct(double x1, double y1, double x2, double y2) {
   return x1 * y2 - x2 * y1;
 }
 
