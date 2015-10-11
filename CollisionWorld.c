@@ -33,6 +33,8 @@
 #include "./Line.h"
 #include "./Quadtree.h"
 
+#include <cilk/cilk.h>
+
 #define MAX_INTERSECTS 20
 
 CollisionWorld* CollisionWorld_new(const unsigned int capacity) {
@@ -159,8 +161,6 @@ QuadTree* build_quadtree(CollisionWorld* cw) {
 
   QuadTree_addLines(q, ll, cw->timeStep);
 
-  free(ll);
-
   return q;
 }
 
@@ -175,7 +175,7 @@ IntersectionEventList CollisionWorld_getIntersectionEvents(QuadTree* q,
   LineNode* first_node = q->lines->head;
   LineNode* second_node;
 
-  while (first_node != NULL) {
+  while (first_node) {
     second_node = first_node->next;
     while (second_node != NULL) {
       Line* l1 = first_node->line;

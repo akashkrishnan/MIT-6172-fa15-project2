@@ -160,9 +160,7 @@ inline void QuadTree_addLines(QuadTree* q, LineList* ll, double t) {
     QuadTree_addLines(q->quads[3], lists[4], t);
   }
 
-  for (int i = 1; i < 5; i++) {
-    free(lists[i]);
-  }
+  free(ll);
   free(lists);
 }
 
