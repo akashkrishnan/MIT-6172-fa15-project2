@@ -7,7 +7,7 @@
 #include "./IntersectionEventList.h"
 
 #define N 70
-#define MAX_INTERSECTS 10000
+#define MAX_INTERSECTS 10
 
 typedef struct LineNode {
   Line* line;

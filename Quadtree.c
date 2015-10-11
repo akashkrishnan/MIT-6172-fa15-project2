@@ -171,47 +171,26 @@ IntersectionEventList QuadTree_detectEvents(QuadTree* q,
     return iel;
   }
 
-  LineNode* first_node = q->lines->head;
-  LineNode* second_node;
-
-  while (first_node) {
-    second_node = first_node->next;
-    while (second_node != NULL) {
-      Line* l1 = first_node->line;
-      Line* l2 = second_node->line;
-
-      if (compareLines(l1, l2) >= 0) {
-        Line *temp = l1;
-        l1 = l2;
-        l2 = temp;
-      }
-
-      IntersectionType type = intersect(l1, l2, t);
-      if (type != NO_INTERSECTION) {
-        IntersectionEventList_appendNode(&iel, l1, l2, type);
-      }
-
-      second_node = second_node->next;
-    }
-    first_node = first_node->next;
-  }
+  LineNode *first_node, *second_node;
+  Line *l1, *l2;
 
   first_node = q->lines->head;
-  while (first_node != NULL) {
-    second_node = lines ? lines->head : NULL;
-    while (second_node != NULL) {
-      Line* l1 = first_node->line;
-      Line* l2 = second_node->line;
+  while (first_node) {
+    l1 = first_node->line;
+    second_node = first_node->next;
+    while (second_node) {
+      l2 = second_node->line;
 
-      if (compareLines(l1, l2) >= 0) {
-        Line *temp = l1;
-        l1 = l2;
-        l2 = temp;
-      }
-
-      IntersectionType type = intersect(l1, l2, t);
-      if (type != NO_INTERSECTION) {
-        IntersectionEventList_appendNode(&iel, l1, l2, type);
+      if (compareLines(l1, l2) < 0) {
+        IntersectionType type = intersect(l1, l2, t);
+        if (type != NO_INTERSECTION) {
+          IntersectionEventList_appendNode(&iel, l1, l2, type);
+        }
+      } else {
+        IntersectionType type = intersect(l2, l1, t);
+        if (type != NO_INTERSECTION) {
+          IntersectionEventList_appendNode(&iel, l2, l1, type);
+        }
       }
 
       second_node = second_node->next;
@@ -219,24 +198,48 @@ IntersectionEventList QuadTree_detectEvents(QuadTree* q,
     first_node = first_node->next;
   }
 
-  if (lines) {
+  if (lines && lines->head) {
+    first_node = q->lines->head;
+    while (first_node) {
+      l1 = first_node->line;
+      second_node = lines->head;
+      while (second_node) {
+        l2 = second_node->line;
+
+        if (compareLines(l1, l2) < 0) {
+          IntersectionType type = intersect(l1, l2, t);
+          if (type != NO_INTERSECTION) {
+            IntersectionEventList_appendNode(&iel, l1, l2, type);
+          }
+        } else {
+          IntersectionType type = intersect(l2, l1, t);
+          if (type != NO_INTERSECTION) {
+            IntersectionEventList_appendNode(&iel, l2, l1, type);
+          }
+        }
+
+        second_node = second_node->next;
+      }
+      first_node = first_node->next;
+    }
+
     LineList_concat(q->lines, lines);
   }
 
   IntersectionEventList iel0, iel1, iel2, iel3;
 
-  //if (q->lines->count > MAX_INTERSECTS) {
-  //  iel0 = cilk_spawn QuadTree_detectEvents(q->quads[0], q->lines, t);
-  //  iel1 = cilk_spawn QuadTree_detectEvents(q->quads[1], q->lines, t);
-  //  iel2 = cilk_spawn QuadTree_detectEvents(q->quads[2], q->lines, t);
-  //  iel3 =            QuadTree_detectEvents(q->quads[3], q->lines, t);
-  //  cilk_sync;
-  //} else {
+  if (q->lines->count > MAX_INTERSECTS) {
+    iel0 = cilk_spawn QuadTree_detectEvents(q->quads[0], q->lines, t);
+    iel1 = cilk_spawn QuadTree_detectEvents(q->quads[1], q->lines, t);
+    iel2 = cilk_spawn QuadTree_detectEvents(q->quads[2], q->lines, t);
+    iel3 =            QuadTree_detectEvents(q->quads[3], q->lines, t);
+    cilk_sync;
+  } else {
     iel0 = QuadTree_detectEvents(q->quads[0], q->lines, t);
     iel1 = QuadTree_detectEvents(q->quads[1], q->lines, t);
     iel2 = QuadTree_detectEvents(q->quads[2], q->lines, t);
     iel3 = QuadTree_detectEvents(q->quads[3], q->lines, t);
-  //}
+  }
 
   IntersectionEventList_concat(&iel, &iel0);
   IntersectionEventList_concat(&iel, &iel1);
