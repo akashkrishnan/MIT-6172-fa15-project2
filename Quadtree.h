@@ -25,10 +25,6 @@ typedef struct LineList {
   LineNode* tail;
 } LineList;
 
-LineList* LineList_make();
-
-void LineList_delete(LineList* ll);
-
 void LineList_addLineNode(LineList* ll, LineNode* ln);
 
 void LineList_concat(LineList* l, LineList* r);
@@ -44,9 +40,9 @@ QuadTree* QuadTree_make(double x1, double x2, double y1, double y2);
 
 void QuadTree_delete(QuadTree* q);
 
-int QuadTree_getQuadWithLine(QuadTree* q, Vec p1, Vec p2);
+int QuadTree_getQuadWithLine(double x, double y, Vec p1, Vec p2);
 
-int QuadTree_getQuad(QuadTree* q, LineNode* ln, double timeStep);
+int QuadTree_getQuad(double x, double y, LineNode* ln, double timeStep);
 
 void QuadTree_addLines(QuadTree* q, LineList* ll, double timeStep);
 

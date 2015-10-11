@@ -38,187 +38,128 @@
 CollisionWorld* CollisionWorld_new(const unsigned int capacity) {
   assert(capacity > 0);
 
-  CollisionWorld* collisionWorld = malloc(sizeof(CollisionWorld));
-  if (collisionWorld == NULL) {
+  CollisionWorld* cw = malloc(sizeof(CollisionWorld));
+  if (cw == NULL) {
     return NULL;
   }
 
-  collisionWorld->numLineWallCollisions = 0;
-  collisionWorld->numLineLineCollisions = 0;
-  collisionWorld->timeStep = 0.5;
-  collisionWorld->lines = malloc(capacity * sizeof(Line*));
-  collisionWorld->line_nodes = malloc(capacity * sizeof(LineNode*));
-  collisionWorld->numOfLines = 0;
-  return collisionWorld;
+  cw->numLineWallCollisions = 0;
+  cw->numLineLineCollisions = 0;
+  cw->timeStep = 0.5;
+  cw->lines = malloc(capacity * sizeof(Line*));
+  cw->line_nodes = malloc(capacity * sizeof(LineNode*));
+  cw->numOfLines = 0;
+  return cw;
 }
 
-void CollisionWorld_delete(CollisionWorld* collisionWorld) {
-  for (int i = 0; i < collisionWorld->numOfLines; i++) {
-    free(collisionWorld->lines[i]);
-    free(collisionWorld->line_nodes[i]);
+void CollisionWorld_delete(CollisionWorld* cw) {
+  for (int i = 0; i < cw->numOfLines; i++) {
+    free(cw->lines[i]);
+    free(cw->line_nodes[i]);
   }
-  free(collisionWorld->lines);
-  free(collisionWorld->line_nodes);
-  free(collisionWorld);
+  free(cw->lines);
+  free(cw->line_nodes);
+  free(cw);
 }
 
 unsigned int CollisionWorld_getNumOfLines(CollisionWorld* collisionWorld) {
   return collisionWorld->numOfLines;
 }
 
-void CollisionWorld_addLine(CollisionWorld* cw, Line *line) {
-  cw->lines[cw->numOfLines] = line;
+void CollisionWorld_addLine(CollisionWorld* cw, Line *l) {
+  cw->lines[cw->numOfLines] = l;
+  cw->line_nodes[cw->numOfLines] = LineNode_make(l);
   cw->numOfLines++;
 }
 
-Line* CollisionWorld_getLine(CollisionWorld* collisionWorld,
+Line* CollisionWorld_getLine(CollisionWorld* cw,
                              const unsigned int index) {
-  if (index >= collisionWorld->numOfLines) {
+  if (index >= cw->numOfLines) {
     return NULL;
   }
-  return collisionWorld->lines[index];
+  return cw->lines[index];
 }
 
-void CollisionWorld_updateLines(CollisionWorld* collisionWorld) {
-  CollisionWorld_detectIntersection(collisionWorld);
-  CollisionWorld_updatePosition(collisionWorld);
-  CollisionWorld_lineWallCollision(collisionWorld);
+void CollisionWorld_updateLines(CollisionWorld* cw) {
+  CollisionWorld_detectIntersection(cw);
+  CollisionWorld_updatePosition(cw);
+  CollisionWorld_lineWallCollision(cw);
 }
 
-void CollisionWorld_updatePosition(CollisionWorld* collisionWorld) {
-  double t = collisionWorld->timeStep;
+void CollisionWorld_updatePosition(CollisionWorld* cw) {
+  double t = cw->timeStep;
   Vec delta;
-  for (int i = 0; i < collisionWorld->numOfLines; i++) {
-    Line *line = collisionWorld->lines[i];
-    delta = Vec_multiply(line->velocity, t);
-    line->p1 = Vec_add(line->p1, delta);
-    line->p2 = Vec_add(line->p2, delta);
+  Line* l;
+  for (int i = 0; i < cw->numOfLines; i++) {
+    l = cw->lines[i];
+    delta = Vec_multiply(l->velocity, t);
+    l->p1 = Vec_add(l->p1, delta);
+    l->p2 = Vec_add(l->p2, delta);
   }
 }
 
-void CollisionWorld_lineWallCollision(CollisionWorld* collisionWorld) {
-  for (int i = 0; i < collisionWorld->numOfLines; i++) {
-    Line *line = collisionWorld->lines[i];
+void CollisionWorld_lineWallCollision(CollisionWorld* cw) {
+  for (int i = 0; i < cw->numOfLines; i++) {
+    Line* l = cw->lines[i];
     bool collide = false;
 
     // Right side
-    if ((line->p1.x > BOX_XMAX || line->p2.x > BOX_XMAX)
-        && (line->velocity.x > 0)) {
-      line->velocity.x = -line->velocity.x;
+    if ((l->p1.x > BOX_XMAX || l->p2.x > BOX_XMAX)
+        && (l->velocity.x > 0)) {
+      l->velocity.x = -l->velocity.x;
       collide = true;
     }
+
     // Left side
-    if ((line->p1.x < BOX_XMIN || line->p2.x < BOX_XMIN)
-        && (line->velocity.x < 0)) {
-      line->velocity.x = -line->velocity.x;
+    if ((l->p1.x < BOX_XMIN || l->p2.x < BOX_XMIN)
+        && (l->velocity.x < 0)) {
+      l->velocity.x = -l->velocity.x;
       collide = true;
     }
+
     // Top side
-    if ((line->p1.y > BOX_YMAX || line->p2.y > BOX_YMAX)
-        && (line->velocity.y > 0)) {
-      line->velocity.y = -line->velocity.y;
+    if ((l->p1.y > BOX_YMAX || l->p2.y > BOX_YMAX)
+        && (l->velocity.y > 0)) {
+      l->velocity.y = -l->velocity.y;
       collide = true;
     }
+
     // Bottom side
-    if ((line->p1.y < BOX_YMIN || line->p2.y < BOX_YMIN)
-        && (line->velocity.y < 0)) {
-      line->velocity.y = -line->velocity.y;
+    if ((l->p1.y < BOX_YMIN || l->p2.y < BOX_YMIN)
+        && (l->velocity.y < 0)) {
+      l->velocity.y = -l->velocity.y;
       collide = true;
     }
+
     // Update total number of collisions.
-    if (collide == true) {
-      collisionWorld->numLineWallCollisions++;
+    if (collide) {
+      cw->numLineWallCollisions++;
     }
   }
 }
 
 QuadTree* build_quadtree(CollisionWorld* cw) {
-  double x1 = BOX_XMIN;
-  double x2 = BOX_XMAX;
-  double y1 = BOX_YMIN;
-  double y2 = BOX_YMAX;
-  double timeStep = cw->timeStep;
+  assert(cw);
 
-  QuadTree* q = QuadTree_make(x1, x2, y1, y2);
+  QuadTree* q = QuadTree_make(BOX_XMIN, BOX_XMAX, BOX_YMIN, BOX_YMAX);
+
+  LineList* ll = calloc(1, sizeof(LineList));
 
   int n = cw->numOfLines;
-  if (n <= N) {
-    for (int i = 0; i < n; i++) {
-      LineList_addLineNode(q->lines, cw->line_nodes[i]);
-    }
-    return q;
-  }
-
-  LineList *quad1, *quad2, *quad3, *quad4;
-  quad1 = LineList_make();
-  quad2 = LineList_make();
-  quad3 = LineList_make();
-  quad4 = LineList_make();
-
   LineNode* curr;
-  int type;
   for (int i = 0; i < n; i++) {
-    update_box(cw->lines[i], timeStep);
-    curr = LineNode_make(cw->lines[i]);
+    curr = cw->line_nodes[i];
+
     assert(curr);
     assert(curr->line);
-    type = QuadTree_getQuad(q, curr, timeStep);
-    switch (type) {
-      case 1:
-        LineList_addLineNode(quad1, curr);
-        break;
-      case 2:
-        LineList_addLineNode(quad2, curr);
-        break;
-      case 3:
-        LineList_addLineNode(quad3, curr);
-        break;
-      case 4:
-        LineList_addLineNode(quad4, curr);
-        break;
-      case MULTIPLE_QUADS:
-        LineList_addLineNode(q->lines, curr);
-        break;
-      default:
-        return NULL;
-    }
+
+    update_box(curr->line, cw->timeStep);
+    LineList_addLineNode(ll, curr);
   }
 
-  // Calculate midpoint
-  double x = (x1 + x2) / 2;
-  double y = (y1 + y2) / 2;
+  QuadTree_addLines(q, ll, cw->timeStep);
 
-  // TOP LEFT
-  if (quad1->head) {
-    q->quads[0] = QuadTree_make(x1, x, y1, y);
-    QuadTree_addLines(q->quads[0], quad1, timeStep);
-  } else {
-    LineList_delete(quad1);
-  }
-
-  // TOP RIGHT
-  if (quad2->head) {
-    q->quads[1] = QuadTree_make(x, x2, y1, y);
-    QuadTree_addLines(q->quads[1], quad2, timeStep);
-  } else {
-    LineList_delete(quad2);
-  }
-
-  // BOTTOM LEFT
-  if (quad3->head) {
-    q->quads[2] = QuadTree_make(x1, x, y, y2);
-    QuadTree_addLines(q->quads[2], quad3, timeStep);
-  } else {
-    LineList_delete(quad3);
-  }
-
-  // BOTTOM RIGHT
-  if (quad4->head) {
-    q->quads[3] = QuadTree_make(x, x2, y, y2);
-    QuadTree_addLines(q->quads[3], quad4, timeStep);
-  } else {
-    LineList_delete(quad4);
-  }
+  free(ll);
 
   return q;
 }

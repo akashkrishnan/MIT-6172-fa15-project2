@@ -17,22 +17,6 @@ inline void LineNode_delete(LineNode* ln) {
   free(ln);
 }
 
-
-inline LineList* LineList_make() {
-  return calloc(1, sizeof(LineList));
-}
-
-// TOOD: CAN BE OPTIMIZED BY USING FOR LOOP?
-inline void LineList_delete(LineList* ll) {
-  assert(ll);
-  LineNode* ln = ll->head;
-  while (ln) {
-    LineNode_delete(ln);
-    ln = ln->next;
-  }
-  free(ll);
-}
-
 inline void LineList_addLineNode(LineList* ll, LineNode* ln) {
   assert(ll);
   assert(ln);
@@ -58,13 +42,16 @@ inline void LineList_concat(LineList* l, LineList* r) {
   } else {
     *l = *r;
   }
+  // TODO: following might not be needed anymore
+  r->count = 0;
+  r->head = r->tail = NULL;
 }
 
 
 inline QuadTree* QuadTree_make(double x1, double x2, double y1, double y2) {
   QuadTree* q = malloc(sizeof(QuadTree));
   q->quads = calloc(4, sizeof(QuadTree*));
-  q->lines = LineList_make();
+  q->lines = NULL;
   q->x1 = x1;
   q->x2 = x2;
   q->y1 = y1;
@@ -79,52 +66,40 @@ inline void QuadTree_delete(QuadTree* q) {
     QuadTree_delete(q->quads[2]);
     QuadTree_delete(q->quads[3]);
     free(q->quads);
-    LineList_delete(q->lines);
+    free(q->lines);
     free(q);
   }
 }
 
-inline int QuadTree_getQuadWithLine(QuadTree* q, Vec p1, Vec p2) {
-  // Bounding box
-  double x1 = q->x1;
-  double x2 = q->x2;
-  double y1 = q->y1;
-  double y2 = q->y2;
-
-  // Midpoint
-  double x = (x1 + x2) / 2;
-  double y = (y1 + y2) / 2;
-
-  // Determine if line exits quad
+inline int QuadTree_getQuadWithLine(double x, double y, Vec p1, Vec p2) {
+  // Determine if the line cannot be in a single child
   if (!(((p1.x - x) * (p2.x - x) > 0) &&
         ((p1.y - y) * (p2.y - y) > 0))) {
-    return MULTIPLE_QUADS;
+    return 0;
   }
 
-  // Valid quad values are from 1 to 4
+  // Determine what child the line is in
   int xid = p1.x - x > 0;
   int yid = p1.y - y > 0;
-  int quad = 2 * yid + xid + 1;
-  return quad;
+  return 2 * yid + xid + 1;
 }
 
-inline int QuadTree_getQuad(QuadTree* q, LineNode* ln, double timeStep) {
-  assert(q);
+inline int QuadTree_getQuad(double x, double y, LineNode* ln, double t) {
   assert(ln);
   assert(ln->line);
 
   Vec p1_a = ln->line->p1;
   Vec p2_a = ln->line->p2;
 
-  Vec p1_b = Vec_add(p1_a, Vec_multiply(ln->line->velocity, timeStep));
-  Vec p2_b = Vec_add(p2_a, Vec_multiply(ln->line->velocity, timeStep));
+  Vec p1_b = Vec_add(p1_a, Vec_multiply(ln->line->velocity, t));
+  Vec p2_b = Vec_add(p2_a, Vec_multiply(ln->line->velocity, t));
 
-  int q_a = QuadTree_getQuadWithLine(q, p1_a, p2_a);
-  int q_b = QuadTree_getQuadWithLine(q, p1_b, p2_b);
-  return q_a == q_b ? q_a : MULTIPLE_QUADS;
+  int q_a = QuadTree_getQuadWithLine(x, y, p1_a, p2_a);
+  int q_b = QuadTree_getQuadWithLine(x, y, p1_b, p2_b);
+  return q_a == q_b ? q_a : 0;
 }
 
-inline void QuadTree_addLines(QuadTree* q, LineList* ll, double timeStep) {
+inline void QuadTree_addLines(QuadTree* q, LineList* ll, double t) {
   assert(q);
   assert(ll);
 
@@ -134,77 +109,60 @@ inline void QuadTree_addLines(QuadTree* q, LineList* ll, double timeStep) {
     return;
   }
 
-  double x1 = q->x1;
-  double x2 = q->x2;
-  double y1 = q->y1;
-  double y2 = q->y2;
+  // Calculate midpoint
+  double x = (q->x1 + q->x2) / 2;
+  double y = (q->y1 + q->y2) / 2;
 
-  LineList *quad1, *quad2, *quad3, *quad4;
-  quad1 = LineList_make();
-  quad2 = LineList_make();
-  quad3 = LineList_make();
-  quad4 = LineList_make();
+  // Make line lists, four for children and one for parent
+  // TODO: potentially malloc this once in cw and memset every time in here
+  LineList** lists = malloc(5 * sizeof(LineList*));
+  for (int i = 0; i < 5; i++) {
+    lists[i] = calloc(1, sizeof(LineList));
+  }
 
+  // Put lines in appropriate line lists
   LineNode* curr = ll->head;
+  LineNode* next;
   int type;
   while (curr) {
-    type = QuadTree_getQuad(q, curr, timeStep);
-    switch (type) {
-      case 1:
-        LineList_addLineNode(quad1, curr);
-        break;
-      case 2:
-        LineList_addLineNode(quad2, curr);
-        break;
-      case 3:
-        LineList_addLineNode(quad3, curr);
-        break;
-      case 4:
-        LineList_addLineNode(quad4, curr);
-        break;
-      case MULTIPLE_QUADS:
-        LineList_addLineNode(q->lines, curr);
-        break;
-      default:
-        return;
-    }
-    curr = curr->next;
+    assert(curr->line);
+
+    next = curr->next;
+    type = QuadTree_getQuad(x, y, curr, t);
+    LineList_addLineNode(lists[type], curr);
+    curr = next;
   }
 
-  // Calculate midpoint
-  double x = (x1 + x2) / 2;
-  double y = (y1 + y2) / 2;
+  // PARENT
+  q->lines = lists[0];
 
-  // TOP LEFT
-  if (quad1->head) {
-    q->quads[0] = QuadTree_make(x1, x, y1, y);
-    QuadTree_addLines(q->quads[0], quad1, timeStep);
-  } else {
-    LineList_delete(quad1);
+  // TOP LEFT CHILD
+  if (lists[1]->head) {
+    q->quads[0] = QuadTree_make(q->x1, x, q->y1, y);
+    QuadTree_addLines(q->quads[0], lists[1], t);
   }
 
-  // TOP RIGHT
-  if (quad2->head) {
-    q->quads[1] = QuadTree_make(x, x2, y1, y);
-    QuadTree_addLines(q->quads[1], quad2, timeStep);
-  } else {
-    LineList_delete(quad2);
+  // TOP RIGHT CHILD
+  if (lists[2]->head) {
+    q->quads[1] = QuadTree_make(x, q->x2, q->y1, y);
+    QuadTree_addLines(q->quads[1], lists[2], t);
   }
 
-  // BOTTOM LEFT
-  if (quad3->head) {
-    q->quads[2] = QuadTree_make(x1, x, y, y2);
-    QuadTree_addLines(q->quads[2], quad3, timeStep);
-  } else {
-    LineList_delete(quad3);
+  // BOTTOM LEFT CHILD
+  if (lists[3]->head) {
+    q->quads[2] = QuadTree_make(q->x1, x, y, q->y2);
+    QuadTree_addLines(q->quads[2], lists[3], t);
   }
 
   // BOTTOM RIGHT
-  if (quad4->head) {
-    q->quads[3] = QuadTree_make(x, x2, y, y2);
-    QuadTree_addLines(q->quads[3], quad4, timeStep);
-  } else {
-    LineList_delete(quad4);
+  if (lists[4]->head) {
+    q->quads[3] = QuadTree_make(x, q->x2, y, q->y2);
+    QuadTree_addLines(q->quads[3], lists[4], t);
   }
+
+  for (int i = 1; i < 5; i++) {
+    free(lists[i]);
+  }
+  free(lists);
 }
 
