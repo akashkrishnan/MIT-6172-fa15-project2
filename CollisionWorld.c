@@ -155,15 +155,16 @@ QuadTree* build_quadtree(CollisionWorld* cw) {
   return q;
 }
 
-void CollisionWorld_detectIntersection(CollisionWorld* cw) {
+void CollisionWorld_detectIntersection(CollisionWorld* collisionWorld) {
   // Use QuadTree to get line-line intersections
-  QuadTree* q = build_quadtree(cw);
-  IntersectionEventList iel = QuadTree_detectEvents(q, NULL, cw->timeStep);
-  cw->numLineLineCollisions += iel.count;
+  QuadTree* q = build_quadtree(collisionWorld);
+  IntersectionEventList intersectionEventList =
+    QuadTree_detectEvents(q, NULL, collisionWorld->timeStep);
+  collisionWorld->numLineLineCollisions += intersectionEventList.count;
   QuadTree_delete(q);
 
   // Sort the intersection event list.
-  IntersectionEventNode* startNode = iel.head;
+  IntersectionEventNode* startNode = intersectionEventList.head;
   while (startNode != NULL) {
     IntersectionEventNode* minNode = startNode;
     IntersectionEventNode* curNode = startNode->next;
@@ -180,15 +181,15 @@ void CollisionWorld_detectIntersection(CollisionWorld* cw) {
   }
 
   // Call the collision solver for each intersection event.
-  IntersectionEventNode* curNode = iel.head;
+  IntersectionEventNode* curNode = intersectionEventList.head;
 
   while (curNode != NULL) {
-    CollisionWorld_collisionSolver(cw, curNode->l1, curNode->l2,
+    CollisionWorld_collisionSolver(collisionWorld, curNode->l1, curNode->l2,
                                    curNode->intersectionType);
     curNode = curNode->next;
   }
 
-  IntersectionEventList_deleteNodes(&iel);
+  IntersectionEventList_deleteNodes(&intersectionEventList);
 }
 
 unsigned int CollisionWorld_getNumLineWallCollisions(
