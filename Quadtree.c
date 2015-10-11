@@ -137,26 +137,28 @@ inline void QuadTree_addLines(QuadTree* q, LineList* ll, double t) {
   // TOP LEFT CHILD
   if (lists[1]->head) {
     q->quads[0] = QuadTree_make(q->x1, x, q->y1, y);
-    QuadTree_addLines(q->quads[0], lists[1], t);
+    cilk_spawn QuadTree_addLines(q->quads[0], lists[1], t);
   }
 
   // TOP RIGHT CHILD
   if (lists[2]->head) {
     q->quads[1] = QuadTree_make(x, q->x2, q->y1, y);
-    QuadTree_addLines(q->quads[1], lists[2], t);
+    cilk_spawn QuadTree_addLines(q->quads[1], lists[2], t);
   }
 
   // BOTTOM LEFT CHILD
   if (lists[3]->head) {
     q->quads[2] = QuadTree_make(q->x1, x, y, q->y2);
-    QuadTree_addLines(q->quads[2], lists[3], t);
+    cilk_spawn QuadTree_addLines(q->quads[2], lists[3], t);
   }
 
   // BOTTOM RIGHT CHILD
   if (lists[4]->head) {
     q->quads[3] = QuadTree_make(x, q->x2, y, q->y2);
-    QuadTree_addLines(q->quads[3], lists[4], t);
+    cilk_spawn QuadTree_addLines(q->quads[3], lists[4], t);
   }
+
+  cilk_sync;
 
   free(ll);
   free(lists);
