@@ -48,7 +48,16 @@ reasonable amount of duplicate computation.
 Write-up 5
 ================================================================================
 
-...
+The Quadtree that we designed stored lines in every level of the quadtrees, but
+only the lines in the leaves were used to determine collisions. We implemented
+the quadtree in such a fasion because we believed that it would help
+parallelization by having much more work to do in each thread/quadtree leaf.
+However, without parallelization, it probably takes longer than other quadtree
+implementations because of the larger amount of lines to process in the leaves.
+The work is O(n), and because all the lines are in the leaves, n is larger, on
+average, than another quadtree implementation we designed. Unfortunately, we
+currently have to check for duplicate intersection events, which is O(n), but we
+believe this can be removed in the future.
 
 
 ================================================================================
@@ -79,7 +88,25 @@ amount of work done by each Quadtree is O(N^2).
 Write-up 7
 ================================================================================
 
-...
+Inlining: Quadtree.c did not affect performance.
+
+Inlining: IntersectionDetection.c provided a 10% speedup. [8.920637s]
+
+Inlining: IntersectionEventList.c did not affect performance.
+
+Max Quad Depth: Setting a max depth did not affect performance.
+
+Delta Vector: We calculated and stored the delta vector for each line/vector
+              because we noticed that it was used/calculated multiple times in
+              the original implementation. [8.000123]
+
+Line Intersect: Improving a fastIntersect method greatly improved performance.
+                In addition, we implemented it in a way that we would not have
+                to check for duplicate collision events, which also greatly
+                improved performance. [4.517232s]
+
+Pregenerating Quadtree: We have yet to pregenerate the quadtree once, but we
+                        believe this will give us around a 10% speedup.
 
 
 ================================================================================
