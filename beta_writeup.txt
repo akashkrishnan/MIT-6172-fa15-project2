@@ -1,0 +1,138 @@
+================================================================================
+Write-up 1
+================================================================================
+
+Number of frames = 4000
+---- RESULTS ----
+Elapsed execution time: 113.983129s
+1262 Line-Wall Collisions
+19806 Line-Line Collisions
+---- END RESULTS ----
+
+
+================================================================================
+Write-up 2
+================================================================================
+
+This is not a problem with quadtrees and can easily be addressed. This line that
+passes through multiple quadrants can be passed into each of the leaves. The
+leaves will then incorporate this information during collision detection, so
+quadtrees should still provide an effective speedup for collision detection.
+
+
+================================================================================
+Write-up 3
+================================================================================
+
+Number of frames = 4000
+---- RESULTS ----
+Elapsed execution time: 10.884734s
+1262 Line-Wall Collisions
+19806 Line-Line Collisions
+---- END RESULTS ----
+
+
+================================================================================
+Write-up 4
+================================================================================
+
+The more efficient collision detection ran in 10.88 seconds while the original
+implementation ran in 114 seconds. This is a 10x speedup. A larger speedup was
+expected, considering the amount of additional time and code, but there are
+definitely a few rough areas that could use major optimization. For example,
+checking for duplicate entries is not ifficiently implemented, and there is a
+reasonable amount of duplicate computation.
+
+
+================================================================================
+Write-up 5
+================================================================================
+
+The Quadtree that we designed stored lines in every level of the quadtrees, but
+only the lines in the leaves were used to determine collisions. We implemented
+the quadtree in such a fasion because we believed that it would help
+parallelization by having much more work to do in each thread/quadtree leaf.
+However, without parallelization, it probably takes longer than other quadtree
+implementations because of the larger amount of lines to process in the leaves.
+The work is O(n), and because all the lines are in the leaves, n is larger, on
+average, than another quadtree implementation we designed. Unfortunately, we
+currently have to check for duplicate intersection events, which is O(n), but we
+believe this can be removed in the future.
+
+
+================================================================================
+Write-up 6
+================================================================================
+
+ N     Execution Time
+----------------------
+ 25    14.743758s
+ 40    10.860574s
+ 50    10.080458s
+ 55    9.950865s
+ 60    9.898966s
+*65    9.848825s
+ 70    10.069617s
+ 75    10.250410s
+ 100   10.884734s
+ 200   15.567572s
+
+It was found that the optimal value of N was 65, which provided a 10% speedup.
+Decreasing N from this optimal point increases the execution time because the
+overhead of creating new Quadtrees outweights the work done by each Quadtree.
+Increasing N from this optimal point increases the execution time because the
+amount of work done by each Quadtree is O(N^2).
+
+
+================================================================================
+Write-up 7
+================================================================================
+
+Inlining: Quadtree.c did not affect performance.
+
+Inlining: IntersectionDetection.c provided a 10% speedup. [8.920637s]
+
+Inlining: IntersectionEventList.c did not affect performance.
+
+Max Quad Depth: Setting a max depth did not affect performance.
+
+Delta Vector: We calculated and stored the delta vector for each line/vector
+              because we noticed that it was used/calculated multiple times in
+              the original implementation. [8.000123]
+
+Line Intersect: Improving a fastIntersect method greatly improved performance.
+                In addition, we implemented it in a way that we would not have
+                to check for duplicate collision events, which also greatly
+                improved performance. [4.517232s]
+
+Pregenerating Quadtree: We have yet to pregenerate the quadtree once, but we
+                        believe this will give us around a 10% speedup.
+
+
+================================================================================
+Write-up 8
+================================================================================
+
+...
+
+
+================================================================================
+Write-up 9
+================================================================================
+
+...
+
+
+================================================================================
+Write-up 10
+================================================================================
+
+...
+
+
+================================================================================
+Write-up 11
+================================================================================
+
+...
+
