@@ -81,14 +81,10 @@ inline void QuadTree_reset(QuadTree* q) {
   assert(q);
 
   if (q->quads) {
-    QuadTree_reset(q->quads[0]);
-    QuadTree_reset(q->quads[1]);
-    QuadTree_reset(q->quads[2]);
-    QuadTree_reset(q->quads[3]);
-    //memset(q->quads[0]->lines, 0, sizeof(LineList));
-    //memset(q->quads[1]->lines, 0, sizeof(LineList));
-    //memset(q->quads[2]->lines, 0, sizeof(LineList));
-    //memset(q->quads[3]->lines, 0, sizeof(LineList));
+    memset(q->quads[0]->lines, 0, sizeof(LineList));
+    memset(q->quads[1]->lines, 0, sizeof(LineList));
+    memset(q->quads[2]->lines, 0, sizeof(LineList));
+    memset(q->quads[3]->lines, 0, sizeof(LineList));
   }
   memset(q->lines, 0, sizeof(LineList));
   q->empty = false;
@@ -155,8 +151,7 @@ inline void QuadTree_addLines(QuadTree* q, double t) {
   LineNode* curr = q->lines->head;
   LineNode* next;
   int type;
-  //QuadTree_reset(q);
-  memset(q->lines, 0, sizeof(LineList));
+  QuadTree_reset(q);
   while (curr) {
     assert(curr->line);
 
