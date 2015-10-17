@@ -94,20 +94,16 @@ inline void IntersectionEventList_appendNode(
 
 inline void IntersectionEventList_concat(IntersectionEventList* list1,
                                   IntersectionEventList* list2) {
-  if (list2 == NULL) return;
+  if (list2->head == NULL) return;
   if (list1->head == NULL) {
-    list1->head = list2->head;
-    list1->tail = list2->tail;
+    *list1 = *list2;
   } else {
     list1->tail->next = list2->head;
-    if (list2->tail != NULL) {
-      list1->tail = list2->tail;
-    }
+    list1->tail = list2->tail;
   }
-  list2->head = NULL;
-  list2->tail = NULL;
   list1->count += list2->count;
-  list2->count = 0;
+  list2->head = list2->tail = NULL;
+  //list2->count = 0;
 }
 
 inline void IntersectionEventList_deleteNodes(

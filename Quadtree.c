@@ -226,7 +226,7 @@ void QuadTree_detectEvents(QuadTree* q,
           }
         }
 
-        second_node = second_node->next;
+        second_node = second_node->next;          
       }
       first_node = first_node->next;
     }
