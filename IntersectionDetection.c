@@ -48,13 +48,14 @@ inline IntersectionType intersect(Line *l1, Line *l2, double time) {
   Vec p1 = Vec_add(l2->p1, delta);
   Vec p2 = Vec_add(l2->p2, delta);
 
+  if (intersectLines(l1->p1, l1->p2, l2->p1, l2->p2)) {
+    return ALREADY_INTERSECTED;
+  }
+
   int num_line_intersections = 0;
   bool top_intersected = false;
   bool bot_intersected = false;
 
-  if (intersectLines(l1->p1, l1->p2, l2->p1, l2->p2)) {
-    return ALREADY_INTERSECTED;
-  }
   if (intersectLines(l1->p1, l1->p2, p1, p2)) {
     num_line_intersections++;
   }
