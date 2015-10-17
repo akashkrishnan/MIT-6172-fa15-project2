@@ -38,6 +38,8 @@ struct CollisionWorld {
   LineNode** nodes;
   unsigned int numOfLines;
 
+  QuadTree* q;
+
   // Record the total number of line-wall collisions.
   unsigned int numLineWallCollisions;
 

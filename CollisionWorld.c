@@ -49,6 +49,8 @@ CollisionWorld* CollisionWorld_new(const unsigned int capacity) {
   collisionWorld->lines = malloc(capacity * sizeof(Line*));
   collisionWorld->nodes = malloc(capacity * sizeof(LineNode*));
   collisionWorld->numOfLines = 0;
+  collisionWorld->q = QuadTree_make(BOX_XMIN, BOX_XMAX, BOX_YMIN, BOX_YMAX);
+  QuadTree_build(collisionWorld->q, MAX_DEPTH);
   return collisionWorld;
 }
 
@@ -59,6 +61,7 @@ void CollisionWorld_delete(CollisionWorld* collisionWorld) {
   }
   free(collisionWorld->lines);
   free(collisionWorld->nodes);
+  QuadTree_delete(collisionWorld->q);
   free(collisionWorld);
 }
 
@@ -137,37 +140,32 @@ void CollisionWorld_lineWallCollision(CollisionWorld* collisionWorld) {
   }
 }
 
-QuadTree* build_quadtree(CollisionWorld* cw) {
+inline static void build_quadtree(CollisionWorld* cw) {
   assert(cw);
-
-  QuadTree* q = QuadTree_make(BOX_XMIN, BOX_XMAX, BOX_YMIN, BOX_YMAX);
-
-  QuadTree_build(q, 1);
 
   // Put lines in appropriate line lists
   int n = cw->numOfLines;
   LineNode* curr;
   int type;
+  QuadTree_reset(cw->q);
   for (int i = 0; i < n; i++) {
     curr = cw->nodes[i];
     update_box(curr->line, cw->timeStep);
-    type = QuadTree_getQuad(q->x0, q->y0, curr, cw->timeStep);
+    type = QuadTree_getQuad(cw->q->x0, cw->q->y0, curr, cw->timeStep);
     assert(0 <= type && type < 5);
     if (type == 4) {
-      LineList_addLineNode(q->lines, curr);
+      LineList_addLineNode(cw->q->lines, curr);
     } else {
-      LineList_addLineNode(q->quads[type]->lines, curr);
+      LineList_addLineNode(cw->q->quads[type]->lines, curr);
     }
   }
 
   cilk_for (int i = 0; i < 4; i++) {
-    QuadTree_addLines(q->quads[i], cw->timeStep);
+    QuadTree_addLines(cw->q->quads[i], cw->timeStep);
   }
-
-  return q;
 }
 
-void CollisionWorld_detectIntersection(CollisionWorld* collisionWorld) {
+void CollisionWorld_detectIntersection(CollisionWorld* cw) {
   IntersectionEventListReducer ielr = CILK_C_INIT_REDUCER(
     IntersectionEventList,
     intersection_event_list_reduce,
@@ -178,16 +176,15 @@ void CollisionWorld_detectIntersection(CollisionWorld* collisionWorld) {
   CILK_C_REGISTER_REDUCER(ielr);
 
   // Use QuadTree to get line-line intersections
-  QuadTree* q = build_quadtree(collisionWorld);
-  QuadTree_detectEvents(q, NULL, collisionWorld->timeStep, &ielr);
-  IntersectionEventList intersectionEventList = REDUCER_VIEW(ielr);
-  collisionWorld->numLineLineCollisions += intersectionEventList.count;
-  QuadTree_delete(q);
+  build_quadtree(cw);
+  QuadTree_detectEvents(cw->q, NULL, cw->timeStep, &ielr);
+  IntersectionEventList iel = REDUCER_VIEW(ielr);
+  cw->numLineLineCollisions += iel.count;
 
   CILK_C_UNREGISTER_REDUCER(ielr);
 
   // Sort the intersection event list.
-  IntersectionEventNode* startNode = intersectionEventList.head;
+  IntersectionEventNode* startNode = iel.head;
   while (startNode != NULL) {
     IntersectionEventNode* minNode = startNode;
     IntersectionEventNode* curNode = startNode->next;
@@ -204,15 +201,15 @@ void CollisionWorld_detectIntersection(CollisionWorld* collisionWorld) {
   }
 
   // Call the collision solver for each intersection event.
-  IntersectionEventNode* curNode = intersectionEventList.head;
+  IntersectionEventNode* curNode = iel.head;
 
   while (curNode != NULL) {
-    CollisionWorld_collisionSolver(collisionWorld, curNode->l1, curNode->l2,
+    CollisionWorld_collisionSolver(cw, curNode->l1, curNode->l2,
                                    curNode->intersectionType);
     curNode = curNode->next;
   }
 
-  IntersectionEventList_deleteNodes(&intersectionEventList);
+  IntersectionEventList_deleteNodes(&iel);
 }
 
 unsigned int CollisionWorld_getNumLineWallCollisions(

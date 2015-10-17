@@ -51,7 +51,7 @@ inline void LineList_concat(LineList* l, LineList* r) {
 
 inline QuadTree* QuadTree_make(double x1, double x2, double y1, double y2) {
   QuadTree* q = malloc(sizeof(QuadTree));
-  q->quads = calloc(4, sizeof(QuadTree*));
+  q->quads = NULL;
   q->lines = calloc(1, sizeof(LineList));
   q->x1 = x1;
   q->x2 = x2;
@@ -64,21 +64,41 @@ inline QuadTree* QuadTree_make(double x1, double x2, double y1, double y2) {
 }
 
 inline void QuadTree_delete(QuadTree* q) {
-  if (q) {
+  assert(q);
+
+  if (q->quads) {
     QuadTree_delete(q->quads[0]);
     QuadTree_delete(q->quads[1]);
     QuadTree_delete(q->quads[2]);
     QuadTree_delete(q->quads[3]);
     free(q->quads);
-    free(q->lines);
-    free(q);
   }
+  free(q->lines);
+  free(q);
+}
+
+inline void QuadTree_reset(QuadTree* q) {
+  assert(q);
+
+  if (q->quads) {
+    QuadTree_reset(q->quads[0]);
+    QuadTree_reset(q->quads[1]);
+    QuadTree_reset(q->quads[2]);
+    QuadTree_reset(q->quads[3]);
+    //memset(q->quads[0]->lines, 0, sizeof(LineList));
+    //memset(q->quads[1]->lines, 0, sizeof(LineList));
+    //memset(q->quads[2]->lines, 0, sizeof(LineList));
+    //memset(q->quads[3]->lines, 0, sizeof(LineList));
+  }
+  memset(q->lines, 0, sizeof(LineList));
+  q->empty = true;
 }
 
 inline void QuadTree_build(QuadTree* q, int depth) {
   assert(q);
 
   if (depth > 0) {
+    q->quads = malloc(4 * sizeof(QuadTree*));
     q->quads[0] = QuadTree_make(q->x1, q->x0, q->y1, q->y0);
     q->quads[1] = QuadTree_make(q->x0, q->x2, q->y1, q->y0);
     q->quads[2] = QuadTree_make(q->x1, q->x0, q->y0, q->y2);
@@ -129,13 +149,13 @@ inline void QuadTree_addLines(QuadTree* q, double t) {
     return;
   }
 
-  QuadTree_build(q, 1);
   q->empty = false;
 
   // Put lines in appropriate line lists
   LineNode* curr = q->lines->head;
   LineNode* next;
   int type;
+  //QuadTree_reset(q);
   memset(q->lines, 0, sizeof(LineList));
   while (curr) {
     assert(curr->line);
@@ -191,7 +211,7 @@ void QuadTree_detectEvents(QuadTree* q,
     first_node = first_node->next;
   }
 
-  if (lines && lines->head) {
+  if (lines && lines->count) {
     first_node = q->lines->head;
     while (first_node) {
       l1 = first_node->line;
@@ -219,14 +239,16 @@ void QuadTree_detectEvents(QuadTree* q,
     LineList_concat(q->lines, lines);
   }
 
-  if (q->lines->count > MAX_INTERSECTS) {
-    cilk_for (int i = 0; i < 4; i++) {
-      QuadTree_detectEvents(q->quads[i], q->lines, t, iel);
+  if (q->quads) {
+    if (q->lines->count > MAX_INTERSECTS) {
+      cilk_for (int i = 0; i < 4; i++) {
+        QuadTree_detectEvents(q->quads[i], q->lines, t, iel);
+      }
+    } else {
+      QuadTree_detectEvents(q->quads[0], q->lines, t, iel);
+      QuadTree_detectEvents(q->quads[1], q->lines, t, iel);
+      QuadTree_detectEvents(q->quads[2], q->lines, t, iel);
+      QuadTree_detectEvents(q->quads[3], q->lines, t, iel);
     }
-  } else {
-    QuadTree_detectEvents(q->quads[0], q->lines, t, iel);
-    QuadTree_detectEvents(q->quads[1], q->lines, t, iel);
-    QuadTree_detectEvents(q->quads[2], q->lines, t, iel);
-    QuadTree_detectEvents(q->quads[3], q->lines, t, iel);
   }
 }
