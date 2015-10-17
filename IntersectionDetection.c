@@ -60,7 +60,7 @@ inline IntersectionType intersect(Line *l1, Line *l2, double time) {
 
   int num_line_intersections = 0;
   bool top_intersected = false;
-  bool bottom_intersected = false;
+  bool bot_intersected = false;
 
   if (intersectLines(l1->p1, l1->p2, l2->p1, l2->p2)) {
     return ALREADY_INTERSECTED;
@@ -74,15 +74,15 @@ inline IntersectionType intersect(Line *l1, Line *l2, double time) {
   }
   if (intersectLines(l1->p1, l1->p2, p2, l2->p2)) {
     num_line_intersections++;
-    bottom_intersected = true;
+    bot_intersected = true;
   }
 
   if (num_line_intersections == 2) {
     return L2_WITH_L1;
   }
 
-  if (pointInParallelogram(l1->p1, l2->p1, l2->p2, p1, p2)
-      && pointInParallelogram(l1->p2, l2->p1, l2->p2, p1, p2)) {
+  if (pointInParallelogram(l1->p1, l2->p1, l2->p2, p1, p2) &&
+      pointInParallelogram(l1->p2, l2->p1, l2->p2, p1, p2)) {
     return L1_WITH_L2;
   }
 
@@ -92,20 +92,9 @@ inline IntersectionType intersect(Line *l1, Line *l2, double time) {
 
   double angle = Vec_angle(v1, v2);
 
-  if (top_intersected) {
-    if (angle < 0) {
-      return L2_WITH_L1;
-    } else {
-      return L1_WITH_L2;
-    }
-  }
-
-  if (bottom_intersected) {
-    if (angle > 0) {
-      return L2_WITH_L1;
-    } else {
-      return L1_WITH_L2;
-    }
+  if ((top_intersected && angle < 0) ||
+      (bot_intersected && angle > 0)) {
+    return L2_WITH_L1;
   }
 
   return L1_WITH_L2;
@@ -115,19 +104,9 @@ inline IntersectionType intersect(Line *l1, Line *l2, double time) {
 inline bool pointInParallelogram(Vec point, Vec p1, Vec p2, Vec p3, Vec p4) {
   double d1 = direction(p1, p2, point);
   double d2 = direction(p3, p4, point);
-  
-  if ((d1 < 0 && d2 < 0) || (d1 > 0 && d2 > 0)) {
-    return false;
-  }
-
   double d3 = direction(p1, p3, point);
   double d4 = direction(p2, p4, point);
-  
-  if ((d3 < 0 && d4 < 0) || (d3 > 0 && d4 > 0)) {
-    return false;
-  }
-
-  return true;
+  return d1 * d2 < 0 && d3 * d4 < 0;
 }
 
 // Check if two lines intersect.
@@ -154,11 +133,8 @@ inline double direction(Vec pi, Vec pj, Vec pk) {
 // Check if a point pk is in the line segment (pi, pj).
 // pi, pj, and pk must be collinear.
 inline bool onSegment(Vec pi, Vec pj, Vec pk) {
-  if (((pi.x <= pk.x && pk.x <= pj.x) || (pj.x <= pk.x && pk.x <= pi.x))
-      && ((pi.y <= pk.y && pk.y <= pj.y) || (pj.y <= pk.y && pk.y <= pi.y))) {
-    return true;
-  }
-  return false;
+  return ((pi.x <= pk.x && pk.x <= pj.x) || (pj.x <= pk.x && pk.x <= pi.x)) &&
+         ((pi.y <= pk.y && pk.y <= pj.y) || (pj.y <= pk.y && pk.y <= pi.y));
 }
 
 // Calculate the cross product.

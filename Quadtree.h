@@ -44,7 +44,7 @@ int QuadTree_getQuad(double x, double y, LineNode* ln, double timeStep);
 
 void QuadTree_addLines(QuadTree* q, LineList* ll, double timeStep);
 
-IntersectionEventList QuadTree_detectEvents(QuadTree* q, LineList* lines, double timeStep);
+void QuadTree_detectEvents(QuadTree* q, LineList* lines, double timeStep, IntersectionEventList* iel);
 
 #endif  // QUADTREE_H_
 

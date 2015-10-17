@@ -27,6 +27,7 @@
 #include <math.h>
 #include <assert.h>
 #include <stdio.h>
+#include <cilk/cilk.h>
 
 #include "./IntersectionDetection.h"
 #include "./IntersectionEventList.h"
@@ -156,10 +157,11 @@ QuadTree* build_quadtree(CollisionWorld* cw) {
 }
 
 void CollisionWorld_detectIntersection(CollisionWorld* collisionWorld) {
+  IntersectionEventList intersectionEventList = IntersectionEventList_make();
+
   // Use QuadTree to get line-line intersections
   QuadTree* q = build_quadtree(collisionWorld);
-  IntersectionEventList intersectionEventList =
-    QuadTree_detectEvents(q, NULL, collisionWorld->timeStep);
+  QuadTree_detectEvents(q, NULL, collisionWorld->timeStep, &intersectionEventList);
   collisionWorld->numLineLineCollisions += intersectionEventList.count;
   QuadTree_delete(q);
 
