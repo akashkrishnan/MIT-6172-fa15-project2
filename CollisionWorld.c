@@ -142,17 +142,34 @@ QuadTree* build_quadtree(CollisionWorld* cw) {
 
   QuadTree* q = QuadTree_make(BOX_XMIN, BOX_XMAX, BOX_YMIN, BOX_YMAX);
 
-  LineList* ll = calloc(1, sizeof(LineList));
+  // Calculate midpoint
+  double x = (q->x1 + q->x2) / 2;
+  double y = (q->y1 + q->y2) / 2;
 
+  q->quads[0] = QuadTree_make(q->x1, x, q->y1, y);
+  q->quads[1] = QuadTree_make(x, q->x2, q->y1, y);
+  q->quads[2] = QuadTree_make(q->x1, x, y, q->y2);
+  q->quads[3] = QuadTree_make(x, q->x2, y, q->y2);
+
+  // Put lines in appropriate line lists
   int n = cw->numOfLines;
   LineNode* curr;
+  int type;
   for (int i = 0; i < n; i++) {
     curr = cw->nodes[i];
     update_box(curr->line, cw->timeStep);
-    LineList_addLineNode(ll, curr);
+    type = QuadTree_getQuad(x, y, curr, cw->timeStep);
+    assert(0 <= type && type < 5);
+    if (type == 4) {
+      LineList_addLineNode(q->lines, curr);
+    } else {
+      LineList_addLineNode(q->quads[type]->lines, curr);
+    }
   }
 
-  QuadTree_addLines(q, ll, cw->timeStep);
+  cilk_for (int i = 0; i < 4; i++) {
+    QuadTree_addLines(q->quads[i], cw->timeStep);
+  }
 
   return q;
 }

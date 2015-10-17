@@ -42,7 +42,7 @@ int QuadTree_getQuadWithLine(double x, double y, Vec p1, Vec p2);
 
 int QuadTree_getQuad(double x, double y, LineNode* ln, double timeStep);
 
-void QuadTree_addLines(QuadTree* q, LineList* ll, double timeStep);
+void QuadTree_addLines(QuadTree* q, double timeStep);
 
 void QuadTree_detectEvents(QuadTree* q, LineList* lines, double timeStep, IntersectionEventListReducer* iel);
 
