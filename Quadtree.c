@@ -57,6 +57,9 @@ inline QuadTree* QuadTree_make(double x1, double x2, double y1, double y2) {
   q->x2 = x2;
   q->y1 = y1;
   q->y2 = y2;
+  q->x0 = (q->x1 + q->x2) / 2;
+  q->y0 = (q->y1 + q->y2) / 2;
+  q->empty = true;
   return q;
 }
 
@@ -69,6 +72,21 @@ inline void QuadTree_delete(QuadTree* q) {
     free(q->quads);
     free(q->lines);
     free(q);
+  }
+}
+
+inline void QuadTree_build(QuadTree* q, int depth) {
+  assert(q);
+
+  if (depth > 0) {
+    q->quads[0] = QuadTree_make(q->x1, q->x0, q->y1, q->y0);
+    q->quads[1] = QuadTree_make(q->x0, q->x2, q->y1, q->y0);
+    q->quads[2] = QuadTree_make(q->x1, q->x0, q->y0, q->y2);
+    q->quads[3] = QuadTree_make(q->x0, q->x2, q->y0, q->y2);
+    QuadTree_build(q->quads[0], depth - 1);
+    QuadTree_build(q->quads[1], depth - 1);
+    QuadTree_build(q->quads[2], depth - 1);
+    QuadTree_build(q->quads[3], depth - 1);
   }
 }
 
@@ -107,17 +125,12 @@ inline void QuadTree_addLines(QuadTree* q, double t) {
 
   // Check if node can fit all the lines
   if (q->lines->count <= N) {
+    q->empty = true;
     return;
   }
 
-  // Calculate midpoint
-  double x = (q->x1 + q->x2) / 2;
-  double y = (q->y1 + q->y2) / 2;
-
-  q->quads[0] = QuadTree_make(q->x1, x, q->y1, y);
-  q->quads[1] = QuadTree_make(x, q->x2, q->y1, y);
-  q->quads[2] = QuadTree_make(q->x1, x, y, q->y2);
-  q->quads[3] = QuadTree_make(x, q->x2, y, q->y2);
+  QuadTree_build(q, 1);
+  q->empty = false;
 
   // Put lines in appropriate line lists
   LineNode* curr = q->lines->head;
@@ -128,7 +141,7 @@ inline void QuadTree_addLines(QuadTree* q, double t) {
     assert(curr->line);
 
     next = curr->next;
-    type = QuadTree_getQuad(x, y, curr, t);
+    type = QuadTree_getQuad(q->x0, q->y0, curr, t);
     assert(0 <= type && type < 5);
     if (type == 4) {
       LineList_addLineNode(q->lines, curr);

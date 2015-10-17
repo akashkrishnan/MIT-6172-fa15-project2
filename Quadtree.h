@@ -8,6 +8,7 @@
 
 #define N 70
 #define MAX_INTERSECTS 5
+#define MAX_DEPTH 7;
 
 typedef struct LineNode {
   Line* line;
@@ -29,14 +30,17 @@ void LineList_addLineNode(LineList* ll, LineNode* ln);
 void LineList_concat(LineList* l, LineList* r);
 
 typedef struct QuadTree {
-  double x1, x2, y1, y2;
+  double x1, x2, y1, y2, x0, y0;
   struct QuadTree** quads;
   LineList* lines;
+  int empty;
 } QuadTree;
 
 QuadTree* QuadTree_make(double x1, double x2, double y1, double y2);
 
 void QuadTree_delete(QuadTree* q);
+
+void QuadTree_build(QuadTree* q, int depth);
 
 int QuadTree_getQuadWithLine(double x, double y, Vec p1, Vec p2);
 
