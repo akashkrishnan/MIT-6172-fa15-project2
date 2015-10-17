@@ -28,6 +28,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <cilk/cilk.h>
+#include <cilk/reducer.h>
 
 #include "./IntersectionDetection.h"
 #include "./IntersectionEventList.h"
@@ -157,13 +158,23 @@ QuadTree* build_quadtree(CollisionWorld* cw) {
 }
 
 void CollisionWorld_detectIntersection(CollisionWorld* collisionWorld) {
-  IntersectionEventList intersectionEventList = IntersectionEventList_make();
+  IntersectionEventListReducer ielr = CILK_C_INIT_REDUCER(
+    IntersectionEventList,
+    intersection_event_list_reduce,
+    intersection_event_list_identity,
+    intersection_event_list_destroy,
+    IntersectionEventList_make()
+  );
+  CILK_C_REGISTER_REDUCER(ielr);
 
   // Use QuadTree to get line-line intersections
   QuadTree* q = build_quadtree(collisionWorld);
-  QuadTree_detectEvents(q, NULL, collisionWorld->timeStep, &intersectionEventList);
+  QuadTree_detectEvents(q, NULL, collisionWorld->timeStep, &ielr);
+  IntersectionEventList intersectionEventList = REDUCER_VIEW(ielr);
   collisionWorld->numLineLineCollisions += intersectionEventList.count;
   QuadTree_delete(q);
+
+  CILK_C_UNREGISTER_REDUCER(ielr);
 
   // Sort the intersection event list.
   IntersectionEventNode* startNode = intersectionEventList.head;

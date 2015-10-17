@@ -23,6 +23,8 @@
 #ifndef INTERSECTIONEVENTLIST_H_
 #define INTERSECTIONEVENTLIST_H_
 
+#include <cilk/reducer.h>
+
 #include "./Line.h"
 #include "./IntersectionDetection.h"
 
@@ -53,6 +55,8 @@ struct IntersectionEventList {
 };
 typedef struct IntersectionEventList IntersectionEventList;
 
+typedef CILK_C_DECLARE_REDUCER(IntersectionEventList) IntersectionEventListReducer;
+
 // Returns an empty list.
 IntersectionEventList IntersectionEventList_make();
 
@@ -68,5 +72,11 @@ void IntersectionEventList_concat(IntersectionEventList* list1,
 // Deletes all the nodes in the list.
 void IntersectionEventList_deleteNodes(
     IntersectionEventList* intersectionEventList);
+
+void intersection_event_list_reduce(void* key, void* left, void* right);
+
+void intersection_event_list_identity(void* key, void* value);
+
+void intersection_event_list_destroy(void* key, void* value);
 
 #endif  // INTERSECTIONEVENTLIST_H_

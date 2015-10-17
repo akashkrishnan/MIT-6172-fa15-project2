@@ -123,3 +123,19 @@ inline void IntersectionEventList_deleteNodes(
   intersectionEventList->tail = NULL;
   intersectionEventList->count = 0;
 }
+
+void intersection_event_list_reduce(void* key, void* left, void* right){
+  IntersectionEventList_concat((IntersectionEventList *)left,(IntersectionEventList *)right);
+};
+
+void intersection_event_list_identity(void* key, void* value){
+  IntersectionEventList *old_list = (IntersectionEventList *)value;
+  old_list->head = NULL;
+  old_list->tail = NULL;
+  old_list->count = 0;
+};
+
+void intersection_event_list_destroy(void* key, void* value){
+  IntersectionEventList_deleteNodes((IntersectionEventList *)value);
+};
+
