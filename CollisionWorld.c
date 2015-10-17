@@ -79,13 +79,13 @@ Line* CollisionWorld_getLine(CollisionWorld* collisionWorld,
   return collisionWorld->lines[index];
 }
 
-void CollisionWorld_updateLines(CollisionWorld* collisionWorld) {
+inline void CollisionWorld_updateLines(CollisionWorld* collisionWorld) {
   CollisionWorld_detectIntersection(collisionWorld);
   CollisionWorld_updatePosition(collisionWorld);
   CollisionWorld_lineWallCollision(collisionWorld);
 }
 
-void CollisionWorld_updatePosition(CollisionWorld* collisionWorld) {
+inline void CollisionWorld_updatePosition(CollisionWorld* collisionWorld) {
   double t = collisionWorld->timeStep;
   double dx, dy;
   Line* line;
@@ -101,40 +101,39 @@ void CollisionWorld_updatePosition(CollisionWorld* collisionWorld) {
   }
 }
 
-void CollisionWorld_lineWallCollision(CollisionWorld* collisionWorld) {
+inline void CollisionWorld_lineWallCollision(CollisionWorld* collisionWorld) {
   Line* line;
   int n = collisionWorld->numOfLines;
   for (int i = 0; i < n; i++) {
     line = collisionWorld->lines[i];
-    bool collide = false;
 
     // Right side
     if ((line->p1.x > BOX_XMAX || line->p2.x > BOX_XMAX)
         && (line->velocity.x > 0)) {
       line->velocity.x = -line->velocity.x;
-      collide = true;
+      collisionWorld->numLineWallCollisions++;
+      continue;
     }
     // Left side
     if ((line->p1.x < BOX_XMIN || line->p2.x < BOX_XMIN)
         && (line->velocity.x < 0)) {
       line->velocity.x = -line->velocity.x;
-      collide = true;
+      collisionWorld->numLineWallCollisions++;
+      continue;
     }
     // Top side
     if ((line->p1.y > BOX_YMAX || line->p2.y > BOX_YMAX)
         && (line->velocity.y > 0)) {
       line->velocity.y = -line->velocity.y;
-      collide = true;
+      collisionWorld->numLineWallCollisions++;
+      continue;
     }
     // Bottom side
     if ((line->p1.y < BOX_YMIN || line->p2.y < BOX_YMIN)
         && (line->velocity.y < 0)) {
       line->velocity.y = -line->velocity.y;
-      collide = true;
-    }
-    // Update total number of collisions.
-    if (collide == true) {
       collisionWorld->numLineWallCollisions++;
+      continue;
     }
   }
 }
@@ -164,7 +163,7 @@ inline static void build_quadtree(CollisionWorld* cw) {
   }
 }
 
-void CollisionWorld_detectIntersection(CollisionWorld* cw) {
+inline void CollisionWorld_detectIntersection(CollisionWorld* cw) {
   IntersectionEventListReducer ielr = CILK_C_INIT_REDUCER(
     IntersectionEventList,
     intersection_event_list_reduce,

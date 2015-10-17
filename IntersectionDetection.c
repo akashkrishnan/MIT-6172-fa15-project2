@@ -44,9 +44,9 @@ inline IntersectionType intersect(Line *l1, Line *l2, double time) {
     return NO_INTERSECTION;
   }
 
-  Vec delta = Vec_subtract(l2->delta, l1->delta);
-  Vec p1 = Vec_add(l2->p1, delta);
-  Vec p2 = Vec_add(l2->p2, delta);
+  Vec delta = { .x = l2->delta.x - l1->delta.x, .y = l2->delta.y - l1->delta.y};
+  Vec p1 = {.x = l2->p1.x + delta.x, .y = l2->p1.y + delta.y};
+  Vec p2 = {.x = l2->p2.x + delta.x, .y = l2->p2.y + delta.y};
 
   if (intersectLines(l1->p1, l1->p2, l2->p1, l2->p2)) {
     return ALREADY_INTERSECTED;
