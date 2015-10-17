@@ -109,14 +109,6 @@ inline int QuadTree_getQuadWithLine(double x, double y, Vec p1, Vec p2) {
 inline int QuadTree_getQuad(double x, double y, Line* l, double t) {
   assert(l);
 
-  //Vec p1_a = l->p1;
-  //Vec p2_a = l->p2;
-
-  // TODO: POSSIBLY STORE IN LINE?
-  //Vec delta = Vec_multiply(l->velocity, t);
-  //Vec p1_b = Vec_add(p1_a, delta);
-  //Vec p2_b = Vec_add(p2_a, delta);
-
   int q_a = QuadTree_getQuadWithLine(x, y, l->p1, l->p2);
   int q_b = QuadTree_getQuadWithLine(x, y, l->p3, l->p4);
   return q_a == q_b ? q_a : 4;
@@ -149,10 +141,10 @@ inline void QuadTree_addLines(QuadTree* q, double t) {
     }
     curr = next;
   }
-
-  for (int i = 0; i < 4; i++) {
-    QuadTree_addLines(q->quads[i], t);
-  }
+  QuadTree_addLines(q->quads[0], t);
+  QuadTree_addLines(q->quads[1], t);
+  QuadTree_addLines(q->quads[2], t);
+  QuadTree_addLines(q->quads[3], t);
 }
 
 void QuadTree_detectEvents(QuadTree* q,
@@ -166,9 +158,9 @@ void QuadTree_detectEvents(QuadTree* q,
   Line *l1, *l2;
 
   l1 = q->lines->head;
-  while (l1) {
+  for (int i = 0; i < q->lines->count; i++, l1 = l1->next) {
     l2 = l1->next;
-    while (l2) {
+    for (int j = i + 1; j < q->lines->count; j++, l2 = l2->next) {
       if (compareLines(l1, l2) < 0) {
         IntersectionType type = intersect(l1, l2, t);
         if (type != NO_INTERSECTION) {
@@ -180,16 +172,14 @@ void QuadTree_detectEvents(QuadTree* q,
           IntersectionEventList_appendNode(&REDUCER_VIEW(*iel), l2, l1, type);
         }
       }
-      l2 = l2->next;
     }
-    l1 = l1->next;
   }
 
   if (lines && lines->count) {
     l1 = q->lines->head;
-    while (l1) {
+    for (int i = 0; i < q->lines->count; i++, l1 = l1->next) {
       l2 = lines->head;
-      while (l2) {
+      for (int j = 0; j < lines->count; j++, l2 = l2->next) {
         if (compareLines(l1, l2) < 0) {
           IntersectionType type = intersect(l1, l2, t);
           if (type != NO_INTERSECTION) {
@@ -201,9 +191,7 @@ void QuadTree_detectEvents(QuadTree* q,
             IntersectionEventList_appendNode(&REDUCER_VIEW(*iel), l2, l1, type);
           }
         }
-        l2 = l2->next;          
       }
-      l1 = l1->next;
     }
 
     LineList_concat(q->lines, lines);
