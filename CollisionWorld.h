@@ -35,7 +35,6 @@ struct CollisionWorld {
   // Container that holds all the lines as an array of Line* lines.
   // This CollisionWorld owns the Line* lines.
   Line** lines;
-  LineNode** nodes;
   unsigned int numOfLines;
 
   QuadTree* q;

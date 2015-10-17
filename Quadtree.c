@@ -10,27 +10,15 @@
 #include "./Vec.h"
 #include "./IntersectionEventList.h"
 
-inline LineNode* LineNode_make(Line* l) {
-  LineNode* ln = malloc(sizeof(LineNode));
-  ln->line = l;
-  ln->next = NULL;
-  return ln;
-}
-
-inline void LineNode_delete(LineNode* ln) {
-  assert(ln);
-  free(ln);
-}
-
-inline void LineList_addLineNode(LineList* ll, LineNode* ln) {
+inline void LineList_addLine(LineList* ll, Line* l) {
   assert(ll);
-  assert(ln);
-  ln->next = NULL;
+  assert(l);
+  l->next = NULL;
   if (ll->tail) {
-    ll->tail->next = ln;
-    ll->tail = ln;
+    ll->tail->next = l;
+    ll->tail = l;
   } else {
-    ll->head = ll->tail = ln;
+    ll->head = ll->tail = l;
   }
   ll->count++;
 }
@@ -38,12 +26,11 @@ inline void LineList_addLineNode(LineList* ll, LineNode* ln) {
 inline void LineList_concat(LineList* l, LineList* r) {
   assert(l);
   assert(r);
+  if (r->head == NULL) return;
   if (l->head) {
     l->count += r->count;
     l->tail->next = r->head;
-    if (r->tail) {
-      l->count += r->count;
-    }
+    l->tail = r->tail;
   } else {
     *l = *r;
   }
@@ -119,15 +106,14 @@ inline int QuadTree_getQuadWithLine(double x, double y, Vec p1, Vec p2) {
   return 2 * yid + xid;
 }
 
-inline int QuadTree_getQuad(double x, double y, LineNode* ln, double t) {
-  assert(ln);
-  assert(ln->line);
+inline int QuadTree_getQuad(double x, double y, Line* l, double t) {
+  assert(l);
 
-  Vec p1_a = ln->line->p1;
-  Vec p2_a = ln->line->p2;
+  Vec p1_a = l->p1;
+  Vec p2_a = l->p2;
 
   // TODO: POSSIBLY STORE IN LINE?
-  Vec delta = Vec_multiply(ln->line->velocity, t);
+  Vec delta = Vec_multiply(l->velocity, t);
   Vec p1_b = Vec_add(p1_a, delta);
   Vec p2_b = Vec_add(p2_a, delta);
 
@@ -148,20 +134,18 @@ inline void QuadTree_addLines(QuadTree* q, double t) {
   assert(q->quads);
 
   // Put lines in appropriate line lists
-  LineNode* curr = q->lines->head;
-  LineNode* next;
+  Line* curr = q->lines->head;
+  Line* next;
   int type;
   QuadTree_reset(q);
   while (curr) {
-    assert(curr->line);
-
     next = curr->next;
     type = QuadTree_getQuad(q->x0, q->y0, curr, t);
     assert(0 <= type && type < 5);
     if (type == 4) {
-      LineList_addLineNode(q->lines, curr);
+      LineList_addLine(q->lines, curr);
     } else {
-      LineList_addLineNode(q->quads[type]->lines, curr);
+      LineList_addLine(q->quads[type]->lines, curr);
     }
     curr = next;
   }
@@ -179,16 +163,12 @@ void QuadTree_detectEvents(QuadTree* q,
     return;
   }
 
-  LineNode *first_node, *second_node;
   Line *l1, *l2;
 
-  first_node = q->lines->head;
-  while (first_node) {
-    l1 = first_node->line;
-    second_node = first_node->next;
-    while (second_node) {
-      l2 = second_node->line;
-
+  l1 = q->lines->head;
+  while (l1) {
+    l2 = l1->next;
+    while (l2) {
       if (compareLines(l1, l2) < 0) {
         IntersectionType type = intersect(l1, l2, t);
         if (type != NO_INTERSECTION) {
@@ -200,20 +180,16 @@ void QuadTree_detectEvents(QuadTree* q,
           IntersectionEventList_appendNode(&REDUCER_VIEW(*iel), l2, l1, type);
         }
       }
-
-      second_node = second_node->next;
+      l2 = l2->next;
     }
-    first_node = first_node->next;
+    l1 = l1->next;
   }
 
   if (lines && lines->count) {
-    first_node = q->lines->head;
-    while (first_node) {
-      l1 = first_node->line;
-      second_node = lines->head;
-      while (second_node) {
-        l2 = second_node->line;
-
+    l1 = q->lines->head;
+    while (l1) {
+      l2 = lines->head;
+      while (l2) {
         if (compareLines(l1, l2) < 0) {
           IntersectionType type = intersect(l1, l2, t);
           if (type != NO_INTERSECTION) {
@@ -225,10 +201,9 @@ void QuadTree_detectEvents(QuadTree* q,
             IntersectionEventList_appendNode(&REDUCER_VIEW(*iel), l2, l1, type);
           }
         }
-
-        second_node = second_node->next;          
+        l2 = l2->next;          
       }
-      first_node = first_node->next;
+      l1 = l1->next;
     }
 
     LineList_concat(q->lines, lines);

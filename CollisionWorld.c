@@ -47,7 +47,6 @@ CollisionWorld* CollisionWorld_new(const unsigned int capacity) {
   collisionWorld->numLineLineCollisions = 0;
   collisionWorld->timeStep = 0.5;
   collisionWorld->lines = malloc(capacity * sizeof(Line*));
-  collisionWorld->nodes = malloc(capacity * sizeof(LineNode*));
   collisionWorld->numOfLines = 0;
   collisionWorld->q = QuadTree_make(BOX_XMIN, BOX_XMAX, BOX_YMIN, BOX_YMAX);
   QuadTree_build(collisionWorld->q, MAX_DEPTH);
@@ -57,10 +56,8 @@ CollisionWorld* CollisionWorld_new(const unsigned int capacity) {
 void CollisionWorld_delete(CollisionWorld* collisionWorld) {
   for (int i = 0; i < collisionWorld->numOfLines; i++) {
     free(collisionWorld->lines[i]);
-    free(collisionWorld->nodes[i]);
   }
   free(collisionWorld->lines);
-  free(collisionWorld->nodes);
   QuadTree_delete(collisionWorld->q);
   free(collisionWorld);
 }
@@ -71,7 +68,6 @@ unsigned int CollisionWorld_getNumOfLines(CollisionWorld* collisionWorld) {
 
 void CollisionWorld_addLine(CollisionWorld* collisionWorld, Line *line) {
   collisionWorld->lines[collisionWorld->numOfLines] = line;
-  collisionWorld->nodes[collisionWorld->numOfLines] = LineNode_make(line);
   collisionWorld->numOfLines++;
 }
 
@@ -145,18 +141,18 @@ inline static void build_quadtree(CollisionWorld* cw) {
 
   // Put lines in appropriate line lists
   int n = cw->numOfLines;
-  LineNode* curr;
+  Line* curr;
   int type;
   QuadTree_reset(cw->q);
   for (int i = 0; i < n; i++) {
-    curr = cw->nodes[i];
-    update_box(curr->line, cw->timeStep);
+    curr = cw->lines[i];
+    update_box(curr, cw->timeStep);
     type = QuadTree_getQuad(cw->q->x0, cw->q->y0, curr, cw->timeStep);
     assert(0 <= type && type < 5);
     if (type == 4) {
-      LineList_addLineNode(cw->q->lines, curr);
+      LineList_addLine(cw->q->lines, curr);
     } else {
-      LineList_addLineNode(cw->q->quads[type]->lines, curr);
+      LineList_addLine(cw->q->quads[type]->lines, curr);
     }
   }
 

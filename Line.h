@@ -57,6 +57,8 @@ struct Line {
   bool max_x_is_p1, max_y_is_p1;
   double u_x, l_x, u_y, l_y;
 
+  struct Line* next;
+
   // The line's current velocity, in units of pixels per time step.
   Vec velocity;
 
