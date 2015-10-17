@@ -44,19 +44,9 @@ inline IntersectionType intersect(Line *l1, Line *l2, double time) {
     return NO_INTERSECTION;
   }
 
-  Vec velocity;
-  Vec p1;
-  Vec p2;
-  Vec v1 = Vec_makeFromLine(*l1);
-  Vec v2 = Vec_makeFromLine(*l2);
-
-  // Get relative velocity.
-  velocity = Vec_subtract(l2->velocity, l1->velocity);
-
-  // Get the parallelogram.
-  Vec delta = Vec_multiply(velocity, time);
-  p1 = Vec_add(l2->p1, delta);
-  p2 = Vec_add(l2->p2, delta);
+  Vec delta = Vec_subtract(l2->delta, l1->delta);
+  Vec p1 = Vec_add(l2->p1, delta);
+  Vec p2 = Vec_add(l2->p2, delta);
 
   int num_line_intersections = 0;
   bool top_intersected = false;
@@ -89,6 +79,9 @@ inline IntersectionType intersect(Line *l1, Line *l2, double time) {
   if (num_line_intersections == 0) {
     return NO_INTERSECTION;
   }
+
+  Vec v1 = Vec_makeFromLine(*l1);
+  Vec v2 = Vec_makeFromLine(*l2);
 
   double angle = Vec_angle(v1, v2);
 

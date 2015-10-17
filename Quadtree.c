@@ -109,16 +109,16 @@ inline int QuadTree_getQuadWithLine(double x, double y, Vec p1, Vec p2) {
 inline int QuadTree_getQuad(double x, double y, Line* l, double t) {
   assert(l);
 
-  Vec p1_a = l->p1;
-  Vec p2_a = l->p2;
+  //Vec p1_a = l->p1;
+  //Vec p2_a = l->p2;
 
   // TODO: POSSIBLY STORE IN LINE?
-  Vec delta = Vec_multiply(l->velocity, t);
-  Vec p1_b = Vec_add(p1_a, delta);
-  Vec p2_b = Vec_add(p2_a, delta);
+  //Vec delta = Vec_multiply(l->velocity, t);
+  //Vec p1_b = Vec_add(p1_a, delta);
+  //Vec p2_b = Vec_add(p2_a, delta);
 
-  int q_a = QuadTree_getQuadWithLine(x, y, p1_a, p2_a);
-  int q_b = QuadTree_getQuadWithLine(x, y, p1_b, p2_b);
+  int q_a = QuadTree_getQuadWithLine(x, y, l->p1, l->p2);
+  int q_b = QuadTree_getQuadWithLine(x, y, l->p3, l->p4);
   return q_a == q_b ? q_a : 4;
 }
 

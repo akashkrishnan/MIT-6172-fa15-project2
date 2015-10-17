@@ -40,6 +40,9 @@
 #define WINDOW_WIDTH 1180
 #define WINDOW_HEIGHT 800
 
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+
 typedef double window_dimension;
 typedef vec_dimension box_dimension;
 
@@ -53,6 +56,10 @@ typedef enum {
 struct Line {
   Vec p1;  // One endpoint of the line.
   Vec p2;  // The other endpoint of the line.
+  Vec p3;
+  Vec p4;
+
+  Vec delta;
 
   bool max_x_is_p1, max_y_is_p1;
   double u_x, l_x, u_y, l_y;
@@ -85,24 +92,24 @@ static inline int compareLines(Line *line1, Line *line2) {
 static inline void update_box(Line* line, double timeStep) {
   Vec p1 = line->p1;
   Vec p2 = line->p2;
-  Vec displacement = Vec_multiply(line->velocity, timeStep);
-  Vec new_p1 = Vec_add(p1, displacement);
-  Vec new_p2 = Vec_add(p2, displacement);
+  Vec delta = line->delta = Vec_multiply(line->velocity, timeStep);
+  Vec new_p1 = line->p3 = Vec_add(p1, delta);
+  Vec new_p2 = line->p4 = Vec_add(p2, delta);
 
   if (line->max_x_is_p1) {
-    line->u_x = (p1.x > new_p1.x) ? p1.x : new_p1.x;
-    line->l_x = (p2.x < new_p2.x) ? p2.x : new_p2.x;
+    line->u_x = MAX(p1.x, new_p1.x);
+    line->l_x = MIN(p2.x, new_p2.x);
   } else {
-    line->u_x = (p2.x > new_p2.x) ? p2.x : new_p2.x;
-    line->l_x = (p1.x < new_p1.x) ? p1.x : new_p1.x;
+    line->u_x = MAX(p2.x, new_p2.x);
+    line->l_x = MIN(p1.x, new_p1.x);
   }
 
   if (line->max_y_is_p1) {
-    line->u_y = (p1.y > new_p1.y) ? p1.y : new_p1.y;
-    line->l_y = (p2.y < new_p2.y) ? p2.y : new_p2.y;
+    line->u_y = MAX(p1.y, new_p1.y);
+    line->l_y = MIN(p2.y, new_p2.y);
   } else {
-    line->u_y = (p2.y > new_p2.y) ? p2.y : new_p2.y;
-    line->l_y = (p1.y < new_p1.y) ? p1.y : new_p1.y;
+    line->u_y = MAX(p2.y, new_p2.y);
+    line->l_y = MIN(p1.y, new_p1.y);
   }
 }
 
