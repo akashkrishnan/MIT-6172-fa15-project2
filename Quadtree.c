@@ -91,7 +91,7 @@ inline void QuadTree_reset(QuadTree* q) {
     //memset(q->quads[3]->lines, 0, sizeof(LineList));
   }
   memset(q->lines, 0, sizeof(LineList));
-  q->empty = true;
+  q->empty = false;
 }
 
 inline void QuadTree_build(QuadTree* q, int depth) {
@@ -149,7 +149,7 @@ inline void QuadTree_addLines(QuadTree* q, double t) {
     return;
   }
 
-  q->empty = false;
+  assert(q->quads);
 
   // Put lines in appropriate line lists
   LineNode* curr = q->lines->head;
@@ -239,7 +239,7 @@ void QuadTree_detectEvents(QuadTree* q,
     LineList_concat(q->lines, lines);
   }
 
-  if (q->quads) {
+  if (!q->empty) {
     if (q->lines->count > MAX_INTERSECTS) {
       cilk_for (int i = 0; i < 4; i++) {
         QuadTree_detectEvents(q->quads[i], q->lines, t, iel);
