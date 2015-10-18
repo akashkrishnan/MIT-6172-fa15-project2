@@ -8,7 +8,7 @@
 
 #define N 50
 #define MAX_INTERSECTS 5
-#define MAX_DEPTH 8
+#define MAX_DEPTH 5
 #define PARENT_QUAD 4
 
 typedef struct LineList {

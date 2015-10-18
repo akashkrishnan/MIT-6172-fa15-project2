@@ -96,6 +96,8 @@ inline void QuadTree_build(QuadTree* q, int depth) {
 }
 
 inline int QuadTree_getQuadWithLine(QuadTree* q, Vec p1, Vec p2) {
+  assert(q);
+
   // Determine if the line cannot be in a single child
   if (!(((p1.x - q->x0) * (p2.x - q->x0) > 0) &&
         ((p1.y - q->y0) * (p2.y - q->y0) > 0))) {
@@ -109,6 +111,7 @@ inline int QuadTree_getQuadWithLine(QuadTree* q, Vec p1, Vec p2) {
 }
 
 inline int QuadTree_getQuad(QuadTree* q, Line* l, double t) {
+  assert(q);
   assert(l);
 
   int q_a = QuadTree_getQuadWithLine(q, l->p1, l->p2);
@@ -116,7 +119,7 @@ inline int QuadTree_getQuad(QuadTree* q, Line* l, double t) {
   return q_a == q_b ? q_a : PARENT_QUAD;
 }
 
-inline void QuadTree_addLines(QuadTree* q, double t) {
+void QuadTree_addLines(QuadTree* q, double t) {
   assert(q);
 
   // Check if node can fit all the lines
@@ -139,10 +142,27 @@ inline void QuadTree_addLines(QuadTree* q, double t) {
     LineList_addLine(q->quads[type]->lines, curr);
     curr = next;
   }
+
   QuadTree_addLines(q->quads[0], t);
   QuadTree_addLines(q->quads[1], t);
   QuadTree_addLines(q->quads[2], t);
   QuadTree_addLines(q->quads[3], t);
+}
+
+inline static void processIntersections(Line* l1, Line* l2, double t, IntersectionEventListReducer* iel) {
+  for (; l2; l2 = l2->next) {
+    if (compareLines(l1, l2) < 0) {
+      IntersectionType type = intersect(l1, l2, t);
+      if (type != NO_INTERSECTION) {
+        IntersectionEventList_appendNode(&REDUCER_VIEW(*iel), l1, l2, type);
+      }
+    } else {
+      IntersectionType type = intersect(l2, l1, t);
+      if (type != NO_INTERSECTION) {
+        IntersectionEventList_appendNode(&REDUCER_VIEW(*iel), l2, l1, type);
+      }
+    }
+  }
 }
 
 void QuadTree_detectEvents(QuadTree* q,
@@ -153,47 +173,14 @@ void QuadTree_detectEvents(QuadTree* q,
     return;
   }
 
-  Line *l1, *l2;
-
-  l1 = q->lines->head;
-  while (l1) {
-    l2 = l1->next;
-    while (l2) {
-      if (compareLines(l1, l2) < 0) {
-        IntersectionType type = intersect(l1, l2, t);
-        if (type != NO_INTERSECTION) {
-          IntersectionEventList_appendNode(&REDUCER_VIEW(*iel), l1, l2, type);
-        }
-      } else {
-        IntersectionType type = intersect(l2, l1, t);
-        if (type != NO_INTERSECTION) {
-          IntersectionEventList_appendNode(&REDUCER_VIEW(*iel), l2, l1, type);
-        }
-      }
-      l2 = l2->next;
-    }
-    l1 = l1->next;
+  assert(q->lines);
+  for (Line* l1 = q->lines->head; l1; l1 = l1->next) {
+    processIntersections(l1, l1->next, t, iel);
   }
 
   if (lines && lines->count) {
-    l1 = q->lines->head;
-    while (l1) {
-      l2 = lines->head;
-      while (l2) {
-        if (compareLines(l1, l2) < 0) {
-          IntersectionType type = intersect(l1, l2, t);
-          if (type != NO_INTERSECTION) {
-            IntersectionEventList_appendNode(&REDUCER_VIEW(*iel), l1, l2, type);
-          }
-        } else {
-          IntersectionType type = intersect(l2, l1, t);
-          if (type != NO_INTERSECTION) {
-            IntersectionEventList_appendNode(&REDUCER_VIEW(*iel), l2, l1, type);
-          }
-        }
-        l2 = l2->next;
-      }
-      l1 = l1->next;
+    for (Line* l1 = q->lines->head; l1; l1 = l1->next) {
+      processIntersections(l1, lines->head, t, iel);
     }
 
     LineList_concat(q->lines, lines);
