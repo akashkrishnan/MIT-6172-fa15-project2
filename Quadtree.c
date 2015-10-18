@@ -4,7 +4,7 @@
 #include <assert.h>
 #include <cilk/cilk.h>
 #include <cilk/reducer.h>
-//#include <cilk/cilk_stub.h>
+// #include <cilk/cilk_stub.h>
 
 #include "./Line.h"
 #include "./Vec.h"
@@ -38,7 +38,7 @@ inline void LineList_concat(LineList* l, LineList* r) {
 
 inline QuadTree* QuadTree_make(double x1, double x2, double y1, double y2) {
   QuadTree* q = malloc(sizeof(QuadTree));
-  q->quads = NULL;
+  q->quads = calloc(5, sizeof(QuadTree*)); // 5th pointer points to itself to reduce branching
   q->lines = calloc(1, sizeof(LineList));
   q->x1 = x1;
   q->x2 = x2;
@@ -46,20 +46,22 @@ inline QuadTree* QuadTree_make(double x1, double x2, double y1, double y2) {
   q->y2 = y2;
   q->x0 = (q->x1 + q->x2) / 2;
   q->y0 = (q->y1 + q->y2) / 2;
-  q->empty = true;
+  q->children = false;
+  q->leaf = false;
+  q->quads[PARENT_QUAD] = q; // self pointer
   return q;
 }
 
 inline void QuadTree_delete(QuadTree* q) {
   assert(q);
 
-  if (q->quads) {
+  if (q->children) {
     QuadTree_delete(q->quads[0]);
     QuadTree_delete(q->quads[1]);
     QuadTree_delete(q->quads[2]);
     QuadTree_delete(q->quads[3]);
-    free(q->quads);
   }
+  free(q->quads);
   free(q->lines);
   free(q);
 }
@@ -67,21 +69,21 @@ inline void QuadTree_delete(QuadTree* q) {
 inline void QuadTree_reset(QuadTree* q) {
   assert(q);
 
-  if (q->quads) {
+  if (q->children) {
     memset(q->quads[0]->lines, 0, sizeof(LineList));
     memset(q->quads[1]->lines, 0, sizeof(LineList));
     memset(q->quads[2]->lines, 0, sizeof(LineList));
     memset(q->quads[3]->lines, 0, sizeof(LineList));
   }
   memset(q->lines, 0, sizeof(LineList));
-  q->empty = false;
+  q->leaf = false; // not a leaf more often than not
 }
 
 inline void QuadTree_build(QuadTree* q, int depth) {
   assert(q);
 
   if (depth > 0) {
-    q->quads = malloc(4 * sizeof(QuadTree*));
+    q->children = true;
     q->quads[0] = QuadTree_make(q->x1, q->x0, q->y1, q->y0);
     q->quads[1] = QuadTree_make(q->x0, q->x2, q->y1, q->y0);
     q->quads[2] = QuadTree_make(q->x1, q->x0, q->y0, q->y2);
@@ -93,25 +95,25 @@ inline void QuadTree_build(QuadTree* q, int depth) {
   }
 }
 
-inline int QuadTree_getQuadWithLine(double x, double y, Vec p1, Vec p2) {
+inline int QuadTree_getQuadWithLine(QuadTree* q, Vec p1, Vec p2) {
   // Determine if the line cannot be in a single child
-  if (!(((p1.x - x) * (p2.x - x) > 0) &&
-        ((p1.y - y) * (p2.y - y) > 0))) {
-    return 4;
+  if (!(((p1.x - q->x0) * (p2.x - q->x0) > 0) &&
+        ((p1.y - q->y0) * (p2.y - q->y0) > 0))) {
+    return PARENT_QUAD;
   }
 
   // Determine what child the line is in
-  int xid = p1.x - x > 0;
-  int yid = p1.y - y > 0;
+  int xid = p1.x - q->x0 > 0;
+  int yid = p1.y - q->y0 > 0;
   return 2 * yid + xid;
 }
 
-inline int QuadTree_getQuad(double x, double y, Line* l, double t) {
+inline int QuadTree_getQuad(QuadTree* q, Line* l, double t) {
   assert(l);
 
-  int q_a = QuadTree_getQuadWithLine(x, y, l->p1, l->p2);
-  int q_b = QuadTree_getQuadWithLine(x, y, l->p3, l->p4);
-  return q_a == q_b ? q_a : 4;
+  int q_a = QuadTree_getQuadWithLine(q, l->p1, l->p2);
+  int q_b = QuadTree_getQuadWithLine(q, l->p3, l->p4);
+  return q_a == q_b ? q_a : PARENT_QUAD;
 }
 
 inline void QuadTree_addLines(QuadTree* q, double t) {
@@ -119,11 +121,11 @@ inline void QuadTree_addLines(QuadTree* q, double t) {
 
   // Check if node can fit all the lines
   if (q->lines->count <= N) {
-    q->empty = true;
+    q->leaf = true;
     return;
   }
 
-  assert(q->quads);
+  assert(q->children);
 
   // Put lines in appropriate line lists
   Line* curr = q->lines->head;
@@ -132,13 +134,9 @@ inline void QuadTree_addLines(QuadTree* q, double t) {
   QuadTree_reset(q);
   while (curr) {
     next = curr->next;
-    type = QuadTree_getQuad(q->x0, q->y0, curr, t);
+    type = QuadTree_getQuad(q, curr, t);
     assert(0 <= type && type < 5);
-    if (type == 4) {
-      LineList_addLine(q->lines, curr);
-    } else {
-      LineList_addLine(q->quads[type]->lines, curr);
-    }
+    LineList_addLine(q->quads[type]->lines, curr);
     curr = next;
   }
   QuadTree_addLines(q->quads[0], t);
@@ -158,9 +156,9 @@ void QuadTree_detectEvents(QuadTree* q,
   Line *l1, *l2;
 
   l1 = q->lines->head;
-  for (int i = 0; i < q->lines->count; i++, l1 = l1->next) {
+  while (l1) {
     l2 = l1->next;
-    for (int j = i + 1; j < q->lines->count; j++, l2 = l2->next) {
+    while (l2) {
       if (compareLines(l1, l2) < 0) {
         IntersectionType type = intersect(l1, l2, t);
         if (type != NO_INTERSECTION) {
@@ -172,14 +170,16 @@ void QuadTree_detectEvents(QuadTree* q,
           IntersectionEventList_appendNode(&REDUCER_VIEW(*iel), l2, l1, type);
         }
       }
+      l2 = l2->next;
     }
+    l1 = l1->next;
   }
 
   if (lines && lines->count) {
     l1 = q->lines->head;
-    for (int i = 0; i < q->lines->count; i++, l1 = l1->next) {
+    while (l1) {
       l2 = lines->head;
-      for (int j = 0; j < lines->count; j++, l2 = l2->next) {
+      while (l2) {
         if (compareLines(l1, l2) < 0) {
           IntersectionType type = intersect(l1, l2, t);
           if (type != NO_INTERSECTION) {
@@ -191,13 +191,15 @@ void QuadTree_detectEvents(QuadTree* q,
             IntersectionEventList_appendNode(&REDUCER_VIEW(*iel), l2, l1, type);
           }
         }
+        l2 = l2->next;
       }
+      l1 = l1->next;
     }
 
     LineList_concat(q->lines, lines);
   }
 
-  if (!q->empty) {
+  if (!q->leaf) {
     if (q->lines->count > MAX_INTERSECTS) {
       cilk_for (int i = 0; i < 4; i++) {
         QuadTree_detectEvents(q->quads[i], q->lines, t, iel);

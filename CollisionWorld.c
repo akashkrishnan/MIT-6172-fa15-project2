@@ -85,54 +85,50 @@ inline void CollisionWorld_updateLines(CollisionWorld* collisionWorld) {
   CollisionWorld_lineWallCollision(collisionWorld);
 }
 
-inline void CollisionWorld_updatePosition(CollisionWorld* collisionWorld) {
-  double t = collisionWorld->timeStep;
+inline void CollisionWorld_updatePosition(CollisionWorld* cw) {
+  double t = cw->timeStep;
   double dx, dy;
-  Line* line;
-  int n = collisionWorld->numOfLines;
+  Line* l;
+  int n = cw->numOfLines;
   for (int i = 0; i < n; i++) {
-    line = collisionWorld->lines[i];
-    dx = line->velocity.x * t;
-    dy = line->velocity.y * t;
-    line->p1.x += dx;
-    line->p1.y += dy;
-    line->p2.x += dx;
-    line->p2.y += dy;
+    l = cw->lines[i];
+    dx = l->velocity.x * t;
+    dy = l->velocity.y * t;
+    l->p1.x += dx;
+    l->p1.y += dy;
+    l->p2.x += dx;
+    l->p2.y += dy;
   }
 }
 
-inline void CollisionWorld_lineWallCollision(CollisionWorld* collisionWorld) {
-  Line* line;
-  int n = collisionWorld->numOfLines;
+inline void CollisionWorld_lineWallCollision(CollisionWorld* cw) {
+  Line* l;
+  int n = cw->numOfLines;
   for (int i = 0; i < n; i++) {
-    line = collisionWorld->lines[i];
+    l = cw->lines[i];
 
     // Right side
-    if ((line->p1.x > BOX_XMAX || line->p2.x > BOX_XMAX)
-        && (line->velocity.x > 0)) {
-      line->velocity.x = -line->velocity.x;
-      collisionWorld->numLineWallCollisions++;
+    if ((l->p1.x > BOX_XMAX || l->p2.x > BOX_XMAX) && (l->velocity.x > 0)) {
+      l->velocity.x = -l->velocity.x;
+      cw->numLineWallCollisions++;
       continue;
     }
     // Left side
-    if ((line->p1.x < BOX_XMIN || line->p2.x < BOX_XMIN)
-        && (line->velocity.x < 0)) {
-      line->velocity.x = -line->velocity.x;
-      collisionWorld->numLineWallCollisions++;
+    if ((l->p1.x < BOX_XMIN || l->p2.x < BOX_XMIN) && (l->velocity.x < 0)) {
+      l->velocity.x = -l->velocity.x;
+      cw->numLineWallCollisions++;
       continue;
     }
     // Top side
-    if ((line->p1.y > BOX_YMAX || line->p2.y > BOX_YMAX)
-        && (line->velocity.y > 0)) {
-      line->velocity.y = -line->velocity.y;
-      collisionWorld->numLineWallCollisions++;
+    if ((l->p1.y > BOX_YMAX || l->p2.y > BOX_YMAX) && (l->velocity.y > 0)) {
+      l->velocity.y = -l->velocity.y;
+      cw->numLineWallCollisions++;
       continue;
     }
     // Bottom side
-    if ((line->p1.y < BOX_YMIN || line->p2.y < BOX_YMIN)
-        && (line->velocity.y < 0)) {
-      line->velocity.y = -line->velocity.y;
-      collisionWorld->numLineWallCollisions++;
+    if ((l->p1.y < BOX_YMIN || l->p2.y < BOX_YMIN) && (l->velocity.y < 0)) {
+      l->velocity.y = -l->velocity.y;
+      cw->numLineWallCollisions++;
       continue;
     }
   }
@@ -149,13 +145,9 @@ inline static void build_quadtree(CollisionWorld* cw) {
   for (int i = 0; i < n; i++) {
     curr = cw->lines[i];
     update_box(curr, cw->timeStep);
-    type = QuadTree_getQuad(cw->q->x0, cw->q->y0, curr, cw->timeStep);
-    assert(0 <= type && type < 5);
-    if (type == 4) {
-      LineList_addLine(cw->q->lines, curr);
-    } else {
-      LineList_addLine(cw->q->quads[type]->lines, curr);
-    }
+    type = QuadTree_getQuad(cw->q, curr, cw->timeStep);
+    assert(0 <= type && type <= 4);
+    LineList_addLine(cw->q->quads[type]->lines, curr);
   }
 
   cilk_for (int i = 0; i < 4; i++) {
