@@ -6,7 +6,7 @@
 #include "./Vec.h"
 #include "./IntersectionEventList.h"
 
-#define N 60
+#define N 50
 #define MAX_INTERSECTS 5
 #define MAX_DEPTH 8
 #define PARENT_QUAD 4
