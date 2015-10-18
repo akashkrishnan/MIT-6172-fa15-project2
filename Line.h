@@ -79,37 +79,32 @@ typedef struct Line Line;
 // -1 <=> line1 ordered before line2
 //  0 <=> line1 ordered the same as line2
 //  1 <=> line1 ordered after line2
-static inline int compareLines(Line *line1, Line *line2) {
-  if (line1->id < line2->id) {
-    return -1;
-  } else if (line1->id == line2->id) {
-    return 0;
-  } else {
-    return 1;
-  }
+static inline int compareLines(Line *l1, Line *l2) {
+  return l1->id < l2->id ? -1 : l1->id > l2->id;
 }
 
-static inline void update_box(Line* line, double timeStep) {
-  Vec p1 = line->p1;
-  Vec p2 = line->p2;
-  Vec delta = line->delta = Vec_multiply(line->velocity, timeStep);
-  Vec new_p1 = line->p3 = Vec_add(p1, delta);
-  Vec new_p2 = line->p4 = Vec_add(p2, delta);
+static inline void update_box(Line* l, double t) {
+  l->delta.x = l->velocity.x * t;
+  l->delta.y = l->velocity.y * t;
+  l->p3.x = l->p1.x + l->delta.x;
+  l->p3.y = l->p1.y + l->delta.y;
+  l->p4.x = l->p2.x + l->delta.x;
+  l->p4.y = l->p2.y + l->delta.y;
 
-  if (line->max_x_is_p1) {
-    line->u_x = MAX(p1.x, new_p1.x);
-    line->l_x = MIN(p2.x, new_p2.x);
+  if (l->max_x_is_p1) {
+    l->u_x = MAX(l->p1.x, l->p3.x);
+    l->l_x = MIN(l->p2.x, l->p4.x);
   } else {
-    line->u_x = MAX(p2.x, new_p2.x);
-    line->l_x = MIN(p1.x, new_p1.x);
+    l->u_x = MAX(l->p2.x, l->p4.x);
+    l->l_x = MIN(l->p1.x, l->p3.x);
   }
 
-  if (line->max_y_is_p1) {
-    line->u_y = MAX(p1.y, new_p1.y);
-    line->l_y = MIN(p2.y, new_p2.y);
+  if (l->max_y_is_p1) {
+    l->u_y = MAX(l->p1.y, l->p3.y);
+    l->l_y = MIN(l->p2.y, l->p4.y);
   } else {
-    line->u_y = MAX(p2.y, new_p2.y);
-    line->l_y = MIN(p1.y, new_p1.y);
+    l->u_y = MAX(l->p2.y, l->p4.y);
+    l->l_y = MIN(l->p1.y, l->p3.y);
   }
 }
 
