@@ -44,7 +44,6 @@ inline IntersectionType intersect(Line *l1, Line *l2, double time) {
     return NO_INTERSECTION;
   }
 
-  //Vec delta = { .x = l2->delta.x - l1->delta.x, .y = l2->delta.y - l1->delta.y};
   Vec p1 = {.x = l2->p3.x - l1->delta.x, .y = l2->p3.y - l1->delta.y};
   Vec p2 = {.x = l2->p4.x - l1->delta.x, .y = l2->p4.y - l1->delta.y};
 
@@ -116,7 +115,11 @@ inline Vec getIntersectionPoint(Vec p1, Vec p2, Vec p3, Vec p4) {
   u = ((p4.x - p3.x) * (p1.y - p3.y) - (p4.y - p3.y) * (p1.x - p3.x))
       / ((p4.y - p3.y) * (p2.x - p1.x) - (p4.x - p3.x) * (p2.y - p1.y));
 
-  return Vec_add(p1, Vec_multiply(Vec_subtract(p2, p1), u));
+  Vec p;
+  p.x = p1.x + (p2.x - p1.x) * u;
+  p.y = p1.y + (p2.y - p1.y) * u;
+
+  return p;
 }
 
 // Check the direction of two lines (pi, pj) and (pi, pk).

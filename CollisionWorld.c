@@ -193,7 +193,7 @@ inline void CollisionWorld_detectIntersection(CollisionWorld* cw) {
   // Call the collision solver for each intersection event.
   IntersectionEventNode* curNode = iel.head;
 
-  while (curNode != NULL) {
+  while (curNode) {
     CollisionWorld_collisionSolver(cw, curNode->l1, curNode->l2,
                                    curNode->intersectionType);
     curNode = curNode->next;
@@ -280,10 +280,12 @@ void CollisionWorld_collisionSolver(CollisionWorld* collisionWorld,
       + ((m2 - m1) / (m2 + m1)) * v2Normal;
 
   // Combine the resulting velocities.
-  l1->velocity = Vec_add(Vec_multiply(normal, newV1Normal),
-                         Vec_multiply(face, v1Face));
-  l2->velocity = Vec_add(Vec_multiply(normal, newV2Normal),
-                         Vec_multiply(face, v2Face));
+  //l1->velocity = Vec_add(Vec_multiply(normal, newV1Normal), Vec_multiply(face, v1Face));
+  l1->velocity.x = normal.x * newV1Normal + face.x * v1Face;
+  l1->velocity.y = normal.y * newV1Normal + face.y * v1Face;
+  l2->velocity.x = normal.x * newV2Normal + face.x * v2Face;
+  l2->velocity.y = normal.y * newV2Normal + face.y * v2Face;
+  //l2->velocity = Vec_add(Vec_multiply(normal, newV2Normal), Vec_multiply(face, v2Face));
 
   return;
 }
