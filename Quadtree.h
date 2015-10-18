@@ -6,9 +6,9 @@
 #include "./Vec.h"
 #include "./IntersectionEventList.h"
 
-#define N 70
+#define N 60
 #define MAX_INTERSECTS 5
-#define MAX_DEPTH 3
+#define MAX_DEPTH 8
 #define PARENT_QUAD 4
 
 typedef struct LineList {
