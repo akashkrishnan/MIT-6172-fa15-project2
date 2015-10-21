@@ -27,20 +27,21 @@
 #include "./Line.h"
 #include "./Vec.h"
 
-inline static bool rectangles_overlap(Line* l1, Line* l2) {
-  return (l1->l_x <= l2->u_x) && (l1->u_x >= l2->l_x) &&
-         (l1->l_y <= l2->u_y) && (l1->u_y >= l2->l_y);
+inline static bool rectanglesOverlap(Line* l1, Line* l2) {
+  return l1->l_x <= l2->u_x && l1->u_x >= l2->l_x &&
+         l1->l_y <= l2->u_y && l1->u_y >= l2->l_y;
 }
 
-inline static bool which_side(Vec E, Vec F, Vec P) {
-  return (F.x - E.x) * (P.y - F.y) - (F.y - E.y) * (P.x - F.x) >= 0;
+inline static bool side(Vec E, Vec F, Vec P) {
+  return (F.x - E.x) * (P.y - F.y) -
+         (F.y - E.y) * (P.x - F.x) >= 0;
 }
 
 // Detect if lines l1 and l2 will intersect between now and the next time step.
 inline IntersectionType intersect(Line *l1, Line *l2, double time) {
   assert(compareLines(l1, l2) < 0);
 
-  if (!rectangles_overlap(l1, l2)) {
+  if (!rectanglesOverlap(l1, l2)) {
     return NO_INTERSECTION;
   }
 
@@ -104,16 +105,18 @@ inline bool pointInParallelogram(Vec point, Vec p1, Vec p2, Vec p3, Vec p4) {
 
 // Check if two lines intersect.
 inline bool intersectLines(Vec p1, Vec p2, Vec p3, Vec p4) {
-  return which_side(p1, p2, p3) != which_side(p1, p2, p4) &&
-         which_side(p3, p4, p1) != which_side(p3, p4, p2);
+  return side(p1, p2, p3) != side(p1, p2, p4) &&
+         side(p3, p4, p1) != side(p3, p4, p2);
 }
 
 // Obtain the intersection point for two intersecting line segments.
 inline Vec getIntersectionPoint(Vec p1, Vec p2, Vec p3, Vec p4) {
   double u;
 
-  u = ((p4.x - p3.x) * (p1.y - p3.y) - (p4.y - p3.y) * (p1.x - p3.x))
-      / ((p4.y - p3.y) * (p2.x - p1.x) - (p4.x - p3.x) * (p2.y - p1.y));
+  u = ((p4.x - p3.x) * (p1.y - p3.y) -
+       (p4.y - p3.y) * (p1.x - p3.x)) /
+      ((p4.y - p3.y) * (p2.x - p1.x) -
+       (p4.x - p3.x) * (p2.y - p1.y));
 
   Vec p;
   p.x = p1.x + (p2.x - p1.x) * u;
@@ -124,14 +127,17 @@ inline Vec getIntersectionPoint(Vec p1, Vec p2, Vec p3, Vec p4) {
 
 // Check the direction of two lines (pi, pj) and (pi, pk).
 inline double direction(Vec pi, Vec pj, Vec pk) {
-  return crossProduct(pk.x - pi.x, pk.y - pi.y, pj.x - pi.x, pj.y - pi.y);
+  return crossProduct(pk.x - pi.x, pk.y - pi.y,
+                      pj.x - pi.x, pj.y - pi.y);
 }
 
 // Check if a point pk is in the line segment (pi, pj).
 // pi, pj, and pk must be collinear.
 inline bool onSegment(Vec pi, Vec pj, Vec pk) {
-  return ((pi.x <= pk.x && pk.x <= pj.x) || (pj.x <= pk.x && pk.x <= pi.x)) &&
-         ((pi.y <= pk.y && pk.y <= pj.y) || (pj.y <= pk.y && pk.y <= pi.y));
+  return ((pi.x <= pk.x && pk.x <= pj.x) ||
+          (pj.x <= pk.x && pk.x <= pi.x)) &&
+         ((pi.y <= pk.y && pk.y <= pj.y) ||
+          (pj.y <= pk.y && pk.y <= pi.y));
 }
 
 // Calculate the cross product.
