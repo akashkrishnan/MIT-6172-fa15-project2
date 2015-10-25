@@ -113,12 +113,29 @@ Pregenerating Quadtree: We have yet to pregenerate the quadtree once, but we
 Write-up 8
 ================================================================================
 
-20.59      0.18     0.18  7348619     0.00     0.00  intersect
-18.83      0.34     0.16  3343966     0.00     0.00  side
-11.77      0.44     0.10  1679342     0.00     0.00  intersectLines
-10.59      0.53     0.09   103694     0.00     0.01  processIntersections
-10.00      0.61     0.09  7458034     0.00     0.00  compareLines
- 7.06      0.67     0.06  1713261     0.00     0.00  crossProduct
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total
+ time   seconds   seconds    calls  us/call  us/call  name
+ 52.65      1.21     1.21 279520766     0.00     0.01  intersect
+ 19.22      1.65     0.44     4201   104.79   453.85  QuadTree_detectEvents
+ 10.05      1.88     0.23 48798706     0.00     0.00  Vec_add
+  6.12      2.02     0.14 31855071     0.00     0.00  Vec_multiply
+  3.93      2.11     0.09 20395782     0.00     0.00  Vec_makeFromLine
+  3.06      2.18     0.07     4201    16.67    48.75  QuadTree_addLines
+
+Intersect should always take the most time, because that is essentially what the
+program is supposed to do. Next, QuadTree_detectEvents is what recursively calls
+intersect, so it is understandably 2nd highest. The Vec operations take a lot of
+time apparently. After inspection, it's clear that the Vec operations allocate
+memory; more often than not, we do not need to allocate memory, so those
+operations can be greatly optimized by not allocating memory. Lastly
+QuadTree_addLines is recursively called, but there is not much computation,
+which is why it comes last in the top six.
+
+In terms of what can be parallelized (and what should), we only have the two
+recursive QuadTree functions. intersect can be somewhat parallelized in the
+sense that multiple QuadTrees can call intersect in parallel. Beyond that, there
+is not much that should improve performance.
 
 
 ================================================================================
@@ -145,8 +162,32 @@ No races. Correct result for both 4000 and 4200.
 Write-up 10
 ================================================================================
 
-...
+Cilk Parallel Region(s) Statistics - Elapsed time: 0.053 seconds
+1) Parallelism Profile
+   Work :                                        468,091,836 instructions
+   Span :                                        100,377,314 instructions
+   Burdened span :                               135,604,942 instructions
+   Parallelism :                                 4.66
+   Burdened parallelism :                        3.45
+   Number of spawns/syncs:                       5,096
+   Average instructions / strand :               30,616
+   Strands along span :                          1,515
+   Average instructions / strand on span :       66,255
+   Total number of atomic instructions :         5,702
+   Frame count :                                 11,264
+   Entries to parallel region :                  202
 
+2) Speedup Estimate
+     2 processors:       1.34 - 2.00
+     4 processors:       1.61 - 4.00
+     8 processors:       1.80 - 4.66
+    16 processors:       1.91 - 4.66
+    32 processors:       1.97 - 4.66
+    64 processors:       2.00 - 4.66
+   128 processors:       2.01 - 4.66
+   256 processors:       2.02 - 4.66
+
+Maximum parallelism is 4.66 when it could be up to 8.
 
 ================================================================================
 Write-up 11
@@ -160,22 +201,25 @@ The biggest change we needed to make was avoiding the use of the provided vector
 operations. Specifically, the provided vector operations allocated memory to
 return a new vector struct. To improve performance substantially by .4 seconds
 (1.1 -> 0.7 sec), we replaced the provided vector operations to not create new
-memory. Ideally, we could have created new functions to take in an output vector pointer.
+memory. Ideally, we could have created new functions to take in an output vector
+pointer.
 
 
 ================================================================================
 MITPOSSE FEEDBACK
 ================================================================================
 
-In general, the MITPOSSE mentors thought the code quality was good. Most of the comments
-were suggestions regarding improving the performance. For the beta, we had two different
-implementations for the quadtree, but we only had time to parallelize and optimize one,
-unforunately. The second implementation had a serial performance of 1.5 seconds! We
-responded to all the comments left by the mentors.
+In general, the MITPOSSE mentors thought the code quality was good. Most of the
+comments were suggestions regarding improving the performance. For the beta, we
+had two different implementations for the quadtree, but we only had time to
+parallelize and optimize one, unforunately. The second implementation had a
+serial performance of 1.5 seconds! We responded to all the comments left by the
+mentors.
 
-Something we did not think of (or have time to implement) was using non-standard centers
-for the quadtree division. I completely agree that using a center-of-gravity approach would
-maximize the distribution of lines among the quadtrees. However, since the benchmark only
-uses 800 lines, it's hard to believe it would make a substanial difference in our implementation
-of quadtree. We did not need a substantial performance boost, so we did not try to implement it first.
-
+Something we did not think of (or have time to implement) was using non-standard
+centers for the quadtree division. I completely agree that using a
+center-of-gravity approach would maximize the distribution of lines among the
+quadtrees. However, since the benchmark only uses 800 lines, it's hard to
+believe it would make a substanial difference in our implementation of quadtree.
+We did not need a substantial performance boost, so we did not try to implement
+it first.
