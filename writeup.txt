@@ -142,7 +142,20 @@ is not much that should improve performance.
 Write-up 9
 ================================================================================
 
-...
+We will refer to cilk_for as cilk-spawning in this section.
+
+We parallelized QuadTree_detectEvents by cilk-spawning the recursive calls for
+the immediate children in the root QuadTree. We tried spawning for all children,
+but apparantly only spawning for the root's children worked the best.
+
+We then parallelized QuadTree_addLines by cilk-spawning each QuadTree's four
+children. We could not parallelize the intercept detection because we used
+linked lists as the datatype, which cannot be parallelized efficiently.
+
+After parallelization, we dropped the program's runtime from 1.85 -> 1.25 sec.
+We were unable to improve performance any further from parallelization alone.
+
+No races. Correct result for both 4000 and 4200.
 
 
 ================================================================================
