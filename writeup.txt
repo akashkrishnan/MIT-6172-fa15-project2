@@ -134,5 +134,22 @@ Write-up 10
 Write-up 11
 ================================================================================
 
-The biggest change we needed to make was avoiding the provided vector operations. Specifically, the provided vector operations allocated memory to return a new vector struct. To improve performance substantially (1.1 sec -> 0.7 sec), we replaced the provided vector operations to not create new memory.
+The first change we made was allocating the QuadTree structure with a maximum
+depth once, which occurs before the timed portion of benchmark. This reduced the
+runtime by .1 seconds (1.25 -> 1.15 sec).
+
+The biggest change we needed to make was avoiding the use of the provided vector
+operations. Specifically, the provided vector operations allocated memory to
+return a new vector struct. To improve performance substantially by .4 seconds
+(1.1 -> 0.7 sec), we replaced the provided vector operations to not create new
+memory. Ideally, we could have created new functions to take in an output vector pointer.
+
+
+================================================================================
+MITPOSSE FEEDBACK
+================================================================================
+
+In general, the MITPOSSE mentors thought the code quality was good. Most of the comments were suggestions regarding improving the performance. For the beta, we had two different implementations for the quadtree, but we only had time to parallelize and optimize one, unforunately. The second implementation had a serial performance of 1.5 seconds! We responded to all the comments left by the mentors.
+
+Something we did not think of (or have time to implement) was using non-standard centers for the quadtree division. I completely agree that using a center-of-gravity approach would maximize the distribution of lines among the quadtrees. However, since the benchmark only uses 800 lines, it's hard to believe it would make a substanial difference in our implementation of quadtree. We did not need a substantial performance boost, so we did not try to implement it first.
 
